@@ -11,7 +11,7 @@ func printArray(arr [5]int) {
 }
 
 //改用指针，简化操作
-func printArray2(arr *[5]int) {
+func printArray2(arr *[5]int) { //使用切片，操作arr[0]会更方便。
 	for i, v := range arr {
 		fmt.Println(i, v)
 	}
