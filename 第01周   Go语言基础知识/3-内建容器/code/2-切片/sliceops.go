@@ -23,4 +23,23 @@ func main() {
 
 	printSlice(s2)
 	printSlice(s3)
+
+	fmt.Println("Copying slice")
+	copy(s2, s1)
+	printSlice(s2)
+
+	fmt.Println("Deleting  elements from slice")
+	s2 = append(s2[:3], s2[4:]...)
+	printSlice(s2)
+
+	fmt.Println("Popping from front")
+	front := s2[0]
+	s2 = s2[1:]
+	printSlice(s2)
+
+	fmt.Println("Popping from tail")
+	tail := s2[len(s2)-1]
+	s2 = s2[:len(s2)-1]
+	printSlice(s2)
+	fmt.Println(front, tail)
 }
