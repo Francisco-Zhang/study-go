@@ -20,7 +20,21 @@ func (node treeNode) setValue(value int) {
 }
 
 func (node *treeNode) setValue2(value int) {
+	if node == nil { //非指针类型变量不会是nil
+		fmt.Println("Setting value to nil node，Ignored.")
+		return
+	}
 	node.value = value //都是使用 . 访问成员变量
+}
+
+//中序遍历
+func (node *treeNode) traverse() {
+	if node == nil {
+		return
+	}
+	node.left.traverse() //其他语言 需要判断 node.left == nil,go不需要。
+	node.print()
+	node.right.traverse()
 }
 
 //使用工厂函数，自己控制构建
@@ -64,4 +78,11 @@ func main() {
 	pRoot := &root
 	pRoot.setValue2(10)
 	pRoot.print()
+
+	var pRootNil *treeNode
+	pRootNil.setValue2(30)
+	pRootNil.setValue(2) //指针也可以调用值接收者方法
+	pRootNil = pRoot
+	pRootNil.setValue2(40)
+	pRootNil.print()
 }
