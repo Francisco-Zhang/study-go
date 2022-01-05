@@ -54,3 +54,49 @@ kind create cluster
 整个结构是 kind 镜像里边 运行的 k8s 集群。![4](img/4.png)
 
 为了系统运行的更流程，建议给Docker服务分配更多的CPU,内存空间。
+
+## 4、用kubectl来连接集群
+
+查看集群信息命令：kubectl  cluster-info  --context kind-kind  或者 没有context,直接使用  kubectl  cluster-info
+
+查看版本命令：	kubectl   version
+
+腾讯云 k8s集群访问
+
+1、基本信息里边开通外网访问权限
+
+2、下载配置文件 cls-f5ukhgwj-config
+
+3、重命名为  qcloud-coolcar-config
+
+4、 export KUBECONFIG = ~/Downloads/qcloud-coolcar-config  
+
+​		windows 用 set %KUBECONFIG%=~/Downloads/qcloud-coolcar-config  
+
+
+
+vscode 插件管理：添加config，可以查看k8s信息
+
+![5](img/5.png)
+
+
+
+
+
+查看 kind 集群
+
+kind get kubeconfig  将内容保存到文件，然后使用插件访问。
+
+
+
+设置环境变量后，kubctl访问腾讯云
+
+export KUBECONFIG = ~/Downloads/qcloud-coolcar-config  
+
+kubectl  cluster-info
+
+清除后，访问本机kind
+
+unset   KUBECONFIG 
+
+kubectl  cluster-info
