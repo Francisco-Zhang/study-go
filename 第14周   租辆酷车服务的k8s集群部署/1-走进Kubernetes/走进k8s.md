@@ -139,7 +139,7 @@ yaml配置文件一般拷贝修改，很少手写。
 
 启动容器：kubectl apply -f nginx/nginx-deployment.yaml
 
-查看:		  kubectl get pods
+查看:		  kubectl get pods				 查看指定命名空间：kubectl get pods  -n  kube-system
 
 ### 架构
 
@@ -178,3 +178,8 @@ kubectl exec -it nginx-deployment-76f8sljs0-mvsl  -- /bin/bash
 curl localhost
 ```
 
+## 6、节点及物理层
+
+节点就是真实的物理机，可以向集群中添加节点。
+
+![9](img/9.png)
