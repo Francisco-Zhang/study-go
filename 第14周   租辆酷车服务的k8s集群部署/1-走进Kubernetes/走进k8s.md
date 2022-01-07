@@ -1,3 +1,5 @@
+
+
 ## 1、集群的配置及版本
 
 ### 简介
@@ -28,7 +30,7 @@ https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/    kubectl 安�
 
 还有其他的工具，例如minikube
 
-Kind 是 kubernetes in docker 的简写。kubernetes in docker  is  not using docker。
+Kind 是 kubernetes in docker 的简写。kubernetes in docker  is  not using docker。（k8s运行的容器并没有使用docker，但是k8s本身部署在docker之上）
 
 官网：https://kind.sigs.k8s.io/![3](img/3.png)
 
@@ -100,3 +102,79 @@ kubectl  cluster-info
 unset   KUBECONFIG 
 
 kubectl  cluster-info
+
+## 5、容器
+
+### 基本操作
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+```
+
+yaml配置文件一般拷贝修改，很少手写。
+
+启动容器：kubectl apply -f nginx/nginx-deployment.yaml
+
+查看:		  kubectl get pods
+
+### 架构
+
+可重复性、不可变性（镜像不可修改，只能发布新版本）
+
+CRI:容器运行接口
+
+![6](img/6.png)
+
+
+
+![7](img/7.png)
+
+
+
+k8s只是操作抽象的接口，需要的只是一个镜像，镜像是由Docker制作还是其他工具制作并不关心。所以Docker弃用并不影响K8s。
+
+我们制作镜像的时候可以使用Docker制作，具体运行的时候容器是docker还是containerd，开发者不需要关心。
+
+
+
+### 工作负载
+
+Pod是逻辑上的Host(主机)，类似一个虚拟机，可以通过腾讯云的后台登录。一般情况下一个Pod运行一个容器。
+
+运行多个容器的情况一般是使用sidecar模式增强，例如服务网格 istio
+
+![8](img/8.png)
+
+Deployment是一个描述，包含：镜像、参数、资源（cpu,memory）
+
+使用命令进入Pod,  -it表示将Pod的输入输出导入到当前中断。
+
+```shell
+kubectl exec -it nginx-deployment-76f8sljs0-mvsl  -- /bin/bash
+curl localhost
+```
+
