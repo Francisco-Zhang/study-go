@@ -183,3 +183,40 @@ curl localhost
 节点就是真实的物理机，可以向集群中添加节点。
 
 ![9](img/9.png)
+
+
+
+## 7、服务与网络
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx    #会将请求转发给标有 app:nginx 标签的Pod
+  ports:
+    - protocol: TCP
+      port: 80
+```
+
+查看服务命令：kubectl get svc
+
+会看到服务的地址，但是是集群内网地址无法访问。所以需要 
+
+```shell
+#1.进入Pod内部
+kubectl exec -it nginx-deployment-76f8sljs0-mvsl  -- /bin/bash
+#2.请求service,通过内部的dns解析
+curl nginx-service
+```
+
+![10](img/10.png)
+
+
+
+腾讯云弹性集群，是按使用时间计费的，使用完之后将Pod删除，以免产生费用
+
+命令： 	kubectl delete deployment --all
+
