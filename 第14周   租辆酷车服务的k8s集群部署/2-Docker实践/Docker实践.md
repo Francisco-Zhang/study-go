@@ -44,6 +44,10 @@ COPY . /go/src/coolcar/server
 WORKDIR /go/src/coolcar/server
 RUN go install ./gateway/...
 
+# 申明暴露的端口，不然容器外无法访问，并不是真正的暴露，只是声明
+# 使用 docker ps 命令查看，可以看到容器暴露的端口信息  8080/tcp
+EXPOSE 8080
+
 # 设置服务入口
 ENTRYPOINT [ "/go/bin/gateway" ]
 ```
@@ -54,5 +58,21 @@ docker build -t coolcar/gateway -f ../deployment/gateway/Dockerfile .
 #服务不需要-it,服务是不会退出的
 docker run coolcar/gateways
 #在vscode使用插件 attach shell 或者 使用命令 docker exec -it  进入docker容器内部。
+```
+
+
+
+## 2、Dockerfile指令详解
+
+```shell
+#需要指定端口映射，才能访问
+docker run -p 8080:8080 coolcar/gateways
+# ENTRYPOINT 和CMD 会拼在一起执行，ENTRYPOINT CMD
+ENTRYPOINT [ "echo",a ]
+CMD ["b"]
+#执行的命令是 echo a b
+a b
+#CMD 是可以更改的,用来重写，ENTRYPOINT是固定的，例如 docker run -p 8080:8080 coolcar/gateways c d e
+a c d e
 ```
 
