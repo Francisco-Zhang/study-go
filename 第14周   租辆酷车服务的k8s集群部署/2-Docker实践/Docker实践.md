@@ -218,3 +218,20 @@ import (
 )
 ```
 
+
+
+## 5、上传镜像
+
+镜像仓库——个人版（开通）——新建命名空间 kucar
+
+```shell
+#登录腾讯云注册中心
+docker login --username=100005209500 ccr.ccs.tencentyun.com
+#镜像打标签，版本号也可以使用日期时间，使用 date "+%Y%m%d" 命令可以产生一个日期串
+docker tag coolcar/gateway ccr.ccs.tencentyun.com/kucar/gateway:1.0
+#使用 docker images 可以查看打了标签的镜像
+#上传镜像
+docker push coolcar/gateway ccr.ccs.tencentyun.com/kucar/gateway:1.0
+```
+
+也可以通过输入Dockerfile路径等参数，配置自动构建
