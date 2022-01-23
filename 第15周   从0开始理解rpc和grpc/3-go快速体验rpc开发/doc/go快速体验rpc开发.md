@@ -213,3 +213,19 @@ rsp= requests.post("http://localhost:1234/jsonrpc",json=request)
 print(rsp.text)
 ```
 
+
+
+## 4、进一步改造rpc调用的代码
+
+1、服务名称由原来的硬编码改为使用变量
+
+2、只想写业务逻辑，不想关注每个函数的名称，所以需要自定义一个client 的代理，实现对rpc方法的封装。
+
+3、服务端的业务逻辑抽离，放到handler中。服务端的服务注册放入到server_proxy中。这样新增加业务时，就不需要修改server.go 和 client.go 了。
+
+4、服务端注册如何做到解耦，我们关心的是结构体内的函数名而不是结构体类型，所以使用鸭子类型，将方法抽象成服务接口。传入的struct只要包含Hello方法就行，所以将接收参数抽象成interface。
+
+以上这些概念在grpc中都有对应。发自灵魂的拷问，处理业务的 server_proxy 和 client_proxy 能不能自动生成？为多种语言生成？
+
+这两个要求都能满足，这个就是 protobuf + grpc 。
+
