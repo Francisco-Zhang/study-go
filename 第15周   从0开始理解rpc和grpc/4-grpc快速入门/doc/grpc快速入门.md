@@ -83,7 +83,7 @@ service Greeter {
 }
 
 message HelloRequest {
-  string name = 1;
+  string name = 1; //1是编号不是值
 }
 
 message HelloReply {
@@ -159,5 +159,97 @@ func main()  {
 
 
 
+## 3、protobuf和json的直观对比
 
+编写proto文件 helloworld.proto
+
+```protobuf
+syntax = "proto3";
+option go_package = "./;proto";  //新版本中需要加 /
+message HelloRequest{
+  string name = 1; //1是编号不是值
+  int32 age = 2;
+  repeated string courses = 3; //repeated 表示是一个切片，可以重复的值。
+}
+```
+
+在控制台 cd 到 helloworld.proto 文件目录，运行下面命令 
+
+```shell
+protoc -I . helloworld.proto --go_out=plugins=grpc:. 
+```
+
+来生成go文件。
+
+实际使用过程中，改用了 protoc --go_out=.  ./helloworld.proto 也可以生成成功，也就是使用了命令
+
+```shell
+protoc --go_out=output_directory input_directory/file.proto
+```
+
+新建proto编码测试文件，会发现protobuf协议打印出来的字符很少，比json占用的空间少，提高了传输效率。
+
+```go
+package main
+
+import (
+	hello "OldPackageTest/helloworld/proto"
+	"encoding/json"
+	"fmt"
+)
+import "github.com/golang/protobuf/proto"
+
+type Hello struct {
+	Name    string   `json:"name"`
+	Age     int      `json:"age"`
+	Courses []string `json:"courses"`
+}
+
+func main() {
+	req := hello.HelloRequest{
+		Name:    "Tom",
+		Age:     18,
+		Courses: []string{"go", "gin", "微服务"},
+	}
+	rsp, _ := proto.Marshal(&req)
+	fmt.Println(string(rsp))
+
+	jsonStruct := Hello{Name: "Tom", Age: 18, Courses: []string{"go", "gin", "微服务"}}
+	jsonRsp, _ := json.Marshal(jsonStruct)
+	fmt.Println(string(jsonRsp))
+}
+```
+
+反序列化测试
+
+```go
+package main
+
+import (
+	hello "OldPackageTest/helloworld/proto"
+	"fmt"
+)
+import "github.com/golang/protobuf/proto"
+
+type Hello struct {
+	Name    string   `json:"name"`
+	Age     int      `json:"age"`
+	Courses []string `json:"courses"`
+}
+
+func main() {
+	req := hello.HelloRequest{
+		Name:    "Tom",
+		Age:     18,
+		Courses: []string{"go", "gin", "微服务"},
+	}
+	rsp, _ := proto.Marshal(&req)
+	fmt.Println(string(rsp))
+
+	newReq := hello.HelloRequest{}
+	_ = proto.Unmarshal(rsp, &newReq)
+	fmt.Println(newReq.Name, newReq.Age, newReq.Courses)
+}
+
+```
 
