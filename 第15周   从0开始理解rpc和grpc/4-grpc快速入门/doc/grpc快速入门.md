@@ -63,13 +63,13 @@ protoc-gen-go是protobuf**编译插件**系列中的Go版本。从上一小节�
 
 
 
-由于protoc-gen-go是Go写的，所以安装它变得很简单，只需要运行 `go get -u github.com/golang/protobuf/protoc-gen-go`，便可以在$GOPATH/bin目录下发现这个工具。至此，就可以通过下面的命令来使用protoc-gen-go了。
+由于protoc-gen-go是Go写的，所以安装它变得很简单，只需要运行 `go get -u github.com/golang/protobuf/protoc-gen-go`，便可以在$GOPATH/bin目录下发现这个工具。
 
 ```shell
 protoc --go_out=output_directory input_directory/file.proto
 ```
 
-其中"--go_out="表示生成Go文件，protoc会自动寻找GOPATH中的protoc-gen-go执行文件。
+其中"--go_out="表示生成Go文件，上述命令只会生成 传输数据 相关的 go语言的 结构体、序列化与反序列化相关代码，并不会生成接口方法相关的go 代码。
 
 
 
@@ -184,6 +184,7 @@ protoc -I . helloworld.proto --go_out=plugins=grpc:.
 实际使用过程中，改用了 protoc --go_out=.  ./helloworld.proto 也可以生成成功，也就是使用了命令
 
 ```shell
+#该命令无法生成 接口方法相关的go语言 grpc 代码
 protoc --go_out=output_directory input_directory/file.proto
 ```
 
@@ -251,5 +252,48 @@ func main() {
 	fmt.Println(newReq.Name, newReq.Age, newReq.Courses)
 }
 
+```
+
+## 4、为什么需要安装protoc和protoc-gen-go？
+
+```protobuf
+syntax = "proto3";
+option go_package = "./;proto";  //新版本中需要加 /
+
+
+service Hello {
+  rpc Hello(HelloRequest) returns (Response); //Hello 接口
+}
+
+message HelloRequest{
+  string name = 1; //1是编号不是值
+  int32 age = 2;
+  repeated string courses = 3; //repeated 表示是一个切片，可以重复的值。
+}
+
+message Response{
+  string reply = 1;
+}
+```
+
+上面的 Hello 并不属于序列化的一部分，但是为什么 通过命令生成了rpc的客户端、服务端代码呢？
+
+原因是 protoc 留有了一种插件机制，可以允许自己编写插件，在原来protoc解析的基础上，进一步增强解析功能，由插件实现。
+
+上面的 Hello 接口 的解析就是通过 protoc-gen-go 这个插件实现的。
+
+很多的框架为了自己的个性化需求，都会自己写插件来对proto文件进行解析。
+
+```shell
+protoc -I . helloworld.proto --go_out=plugins=grpc:.
+-I 表示 input , `.`表示当前目录
+--go_out 表示生成 go 语言的代码
+plugins=grpc 表示 调用 protoc-gen-go 插件生成 接口相关的Go代码
+：. 表示在当前目录生成代码，`:` 猜测可能是一个参数的分隔符
+#使用下面的命令，只会生成 传输的数据 相关的 结构体、序列化、反序列功能 代码，并不包含 grpc 接口部分的代码。 
+protoc -I . helloworld.proto --go_out=:.
+
+#该命令也同样无法生成 接口方法相关的go语言 grpc 代码
+protoc --go_out=output_directory input_directory/file.proto
 ```
 
