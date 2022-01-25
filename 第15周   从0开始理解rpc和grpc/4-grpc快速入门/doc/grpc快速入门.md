@@ -1,4 +1,4 @@
-## 1、什么是grpc和protobuf
+1、什么是grpc和protobuf
 
 ### grpc
 
@@ -295,5 +295,108 @@ protoc -I . helloworld.proto --go_out=:.
 
 #该命令也同样无法生成 接口方法相关的go语言 grpc 代码
 protoc --go_out=output_directory input_directory/file.proto
+```
+
+## 5、go下grpc快速体验
+
+### go_package 说明
+
+```go
+syntax = "proto3";
+option go_package = "./ab;proto22";
+```
+
+- go_package: 标明只会影响go语言，对其他语言无效
+- `./ab`：表示生成的文件的存放目录位于 proto文件当前目录下的 ab 目录下面，
+- `;`: 分隔符
+- `proto22`: 表示自定义生成的go代码的包名。
+
+![3](img/3.png)
+
+### proto
+
+```protobuf
+syntax = "proto3";
+option go_package = "./;proto";  //新版本中需要加 `/`
+
+
+service Greeter {
+  rpc SayHello(HelloRequest) returns (HelloReply); //Hello 接口
+}
+
+message HelloRequest{
+  string name = 1; //1是编号不是值
+}
+
+message HelloReply{
+  string message = 1;
+}
+
+//go语言会生成一个文件，python 会生成两个文件。
+```
+
+### server
+
+```go
+package main
+
+import (
+	"OldPackageTest/grpc_test/proto"
+	"context"
+	"google.golang.org/grpc"
+	"net"
+)
+
+type Server struct {
+}
+
+// SayHello 第一个参数一定要是context,ctx 主要解决协程超时
+func (s *Server) SayHello(ctx context.Context, request *proto.HelloRequest) (*proto.HelloReply, error) {
+
+	return &proto.HelloReply{Message: "hello," + request.Name}, nil
+}
+
+func main() {
+	g := grpc.NewServer()
+	proto.RegisterGreeterServer(g, &Server{})
+	lis, err := net.Listen("tcp", "0.0.0.0:8088")
+	if err != nil {
+		panic("failed to listen:" + err.Error())
+	}
+	err = g.Serve(lis)
+	if err != nil {
+		panic("failed to start grpc:" + err.Error())
+	}
+}
+```
+
+
+
+### client
+
+```go
+package main
+
+import (
+	"OldPackageTest/grpc_test/proto"
+	"context"
+	"fmt"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	conn, err := grpc.Dial("127.0.0.1:8088", grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	c := proto.NewGreeterClient(conn)
+	r, err := c.SayHello(context.Background(), &proto.HelloRequest{Name: "Francisco"})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(r.Message)
+}
 ```
 
