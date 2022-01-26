@@ -400,3 +400,194 @@ func main() {
 }
 ```
 
+## 6、grpc的流模式的定义
+
+### **grpc的四种数据流**
+
+之前我们讲了 grpc 怎么简单的使用 ，这次讲讲 grpc 中的 stream，srteam 顾名思义 就是 一种 流，可以源源不断的 推送 数据，很适合 传输一些大数据，或者 服务端 和 客户端 长时间 数据交互，比如 客户端 可以向 服务端 订阅 一个数据，服务端 就 可以利用 stream ，源源不断地 推送数据。
+
+1. 简单模式（Simple RPC）
+2. 服务端数据流模式（Server-side streaming RPC）
+3. 客户端数据流模式（Client-side streaming RPC）
+4. 双向数据流模式（Bidirectional streaming RPC）
+
+### 简单模式
+
+这种模式最为传统，即客户端发起一次请求，服务端响应一个数据，这和大家平时熟悉的RPC以及前面章节使用的RPC没有什么大的区别，所以不再详细介绍。
+
+### 服务端数据流模式
+
+这种模式是客户端发起一次请求，服务端返回一段连续的数据流。典型的例子是客户端向服务端发送一个股票代码，服务端就把该股票的实时数据源源不断的返回给客户端。
+
+### 客户端数据流模式
+
+与服务端数据流模式相反，这次是客户端源源不断的向服务端发送数据流，而在发送结束后，由服务端返回一个响应。典型的例子是物联网终端向服务器报送数据。
+
+### 双向数据流模式
+
+顾名思义，这是客户端和服务端都可以向对方发送数据流，这个时候双方的数据可以同时互相发送，也就是可以实现实时交互。典型的例子是聊天机器人。
+
+
+
+### proto
+
+```go
+syntax = "proto3";
+option go_package = "./;proto";
+
+service Greeter {
+  rpc GetStream(StreamReqData) returns (stream StreamResData); //服务端流模式，返回参数加关键字 stream
+  rpc PutStream(stream StreamReqData) returns (StreamResData); //客户端流模式，请求参数加关键字 stream
+  rpc AllStream(stream StreamReqData) returns (stream StreamResData); //双向流模式
+}
+
+message StreamReqData {
+  string  data = 1;
+}
+
+message StreamResData {
+  string  data = 1;
+}
+```
+
+
+
+### server
+
+```go
+package main
+
+const PORT = ":50052"
+
+type server struct {
+}
+
+func (s *server) GetStream(req *proto.StreamReqData, res proto.Greeter_GetStreamServer) error {
+	i := 0
+	for {
+		i++
+		_ = res.Send(&proto.StreamResData{
+			Data: fmt.Sprintf("%v", time.Now().Unix()),
+		})
+		time.Sleep(time.Second)
+		if i > 10 {
+			break
+		}
+	}
+	return nil
+}
+func (s *server) PutStream(cliStr proto.Greeter_PutStreamServer) error {
+	for {
+		if tem, err := cliStr.Recv(); err == nil {
+			log.Println(tem)
+		} else {
+			log.Println("break, err :", err)
+			break
+		}
+	}
+	return nil
+}
+func (s *server) AllStream(allStr proto.Greeter_AllStreamServer) error {
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		for {
+			data, _ := allStr.Recv()
+			log.Println(data)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		for {
+			allStr.Send(&proto.StreamResData{Data: "ssss"})
+			time.Sleep(time.Second)
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
+	return nil
+}
+
+func main() {
+	//监听端口
+	lis, err := net.Listen("tcp", PORT)
+	if err != nil {
+		panic(err)
+		return
+	}
+	//创建一个grpc 服务器
+	s := grpc.NewServer()
+	//注册事件
+	proto.RegisterGreeterServer(s, &server{})
+	//处理链接
+	err = s.Serve(lis)
+	if err != nil {
+		panic(err)
+	}
+
+}
+```
+
+
+
+### client
+
+```go
+package main
+
+func main() {
+	//通过grpc 库 建立一个连接
+	conn, err := grpc.Dial("localhost:50052", grpc.WithInsecure())
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+	//通过刚刚的连接 生成一个client对象。
+	c := proto.NewGreeterClient(conn)
+	//调用服务端推送流
+	reqstreamData := &proto.StreamReqData{Data: "aaa"}
+	res, _ := c.GetStream(context.Background(), reqstreamData)
+
+	for {
+		aa, err := res.Recv() //和socket编程的 recv send 是一致的
+		if err != nil {
+			log.Println(err)
+			break
+		}
+		log.Println(aa)
+	}
+
+	//客户端 推送 流
+	putRes, _ := c.PutStream(context.Background())
+	i := 1
+	for {
+		i++
+		putRes.Send(&proto.StreamReqData{Data: "ss"})
+		time.Sleep(time.Second)
+		if i > 10 {
+			break
+		}
+	}
+
+	//服务端 客户端 双向流
+	allStr, _ := c.AllStream(context.Background())
+	go func() {
+		for {
+			data, _ := allStr.Recv()
+			log.Println(data)
+		}
+	}()
+
+	go func() {
+		for {
+			allStr.Send(&proto.StreamReqData{Data: "ssss"})
+			time.Sleep(time.Second)
+		}
+	}()
+
+	select {}
+}
+```
+
