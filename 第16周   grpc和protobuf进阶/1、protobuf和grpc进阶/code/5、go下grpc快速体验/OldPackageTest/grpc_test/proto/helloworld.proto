@@ -1,0 +1,17 @@
+syntax = "proto3";
+option go_package = "./;proto";  //新版本中需要加 `/`
+
+
+service Greeter {
+  rpc SayHello(HelloRequest) returns (HelloReply); //Hello 接口
+}
+
+message HelloRequest{
+  string name = 1; //1是编号不是值
+}
+
+message HelloReply{
+  string message = 1;
+}
+
+//go语言会生成一个文件，python 会生成两个文件。
