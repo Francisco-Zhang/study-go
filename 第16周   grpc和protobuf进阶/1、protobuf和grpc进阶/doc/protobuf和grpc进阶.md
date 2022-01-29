@@ -123,3 +123,29 @@ message HelloReply {
 ```
 
 在go代码中实例化 Result : proto.HelloReply_Result{} ，Result 名字会被修改。
+
+
+
+## 5、protobuf中的enum枚举类型
+
+```protobuf
+enum Gender{
+    MALE = 0;
+    FEMALE = 1;
+}
+
+message HelloRequest {
+    string name = 1; 
+    string url = 2;
+    Gender g = 3;
+}
+```
+
+```go
+rsp, _ := client.SayHello(context.Background(), &proto_bak.HelloRequest{
+		Name: "bobby",
+		Url:  "https://imooc.com",
+		G:    proto_bak.Gender_MALE,
+	})
+```
+
