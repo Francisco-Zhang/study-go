@@ -149,3 +149,29 @@ rsp, _ := client.SayHello(context.Background(), &proto_bak.HelloRequest{
 	})
 ```
 
+## 6、map 类型 和 timestamp类型
+
+```protobuf
+
+message HelloRequest {
+    string name = 1; //姓名 相当于文档
+    string url = 2;
+    Gender g = 3;
+    map<string, string> mp = 4; // 不容易写文档注释，所以不要太频繁使用。
+    google.protobuf.Timestamp addTime = 5;
+}
+```
+
+```go
+rsp, _ := client.SayHello(context.Background(), &proto_bak.HelloRequest{
+		Name: "bobby",
+		Url:  "https://imooc.com",
+		G:    proto_bak.Gender_MALE,
+		Mp: map[string]string{
+			"name":    "bobby",
+			"company": "慕课网",
+		},
+		AddTime: timestamppb.New(time.Now()),
+	})
+```
+
