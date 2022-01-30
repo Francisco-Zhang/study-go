@@ -348,4 +348,92 @@ func main() {
 
 ### 使用拦截器实现多种功能的第三方库
 
-go-grpc-middleware
+**go-grpc-middleware**
+
+
+
+## 9、 通过拦截器和metadata实现grpc的auth认证
+
+### client端编写
+
+```go
+func main() {
+	interceptor := func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, 	invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error{
+		start := time.Now()
+		md := metadata.New(map[string]string{
+			"appid":"10101",
+			"appkey":"i am key",
+	})
+		ctx = metadata.NewOutgoingContext(context.Background(), md)
+		err := invoker(ctx, method, req, reply, cc, opts...)
+		fmt.Printf("耗时：%s\n", time.Since(start))
+		return err
+	}
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithUnaryInterceptor(interceptor))
+	conn, err := grpc.Dial("127.0.0.1:50051", opts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	c := proto.NewGreeterClient(conn)
+	r, err := c.SayHello(context.Background(), &proto.HelloRequest{Name: "bobby"})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(r.Message)
+}
+```
+
+### server端编写
+
+```go
+func main() {
+	interceptor := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		fmt.Println("接收到了一个新的请求")
+		md, ok := metadata.FromIncomingContext(ctx)
+		fmt.Println(md)
+		if !ok {
+			//已经开始接触到grpc的错误处理了
+			return resp, status.Error(codes.Unauthenticated, "无token认证信息")
+		}
+
+		var (
+			appid  string
+			appkey string
+		)
+
+		if va1, ok := md["appid"]; ok {
+			appid = va1[0]
+		}
+
+		if va1, ok := md["appkey"]; ok {
+			appkey = va1[0]
+		}
+
+		if appid != "101010" || appkey != "i am key" {
+			return resp, status.Error(codes.Unauthenticated, "无token认证信息")
+		}
+
+		res, err := handler(ctx, req)
+		fmt.Println("请求已经完成")
+		return res, err
+	}
+
+	opt := grpc.UnaryInterceptor(interceptor)
+	g := grpc.NewServer(opt)
+	proto.RegisterGreeterServer(g, &Server{})
+	lis, err := net.Listen("tcp", "0.0.0.0:50051")
+	if err != nil {
+		panic("failed to listen:" + err.Error())
+	}
+	err = g.Serve(lis)
+	if err != nil {
+		panic("failed to start grpc:" + err.Error())
+	}
+}
+```
+
+client端更简单写法
