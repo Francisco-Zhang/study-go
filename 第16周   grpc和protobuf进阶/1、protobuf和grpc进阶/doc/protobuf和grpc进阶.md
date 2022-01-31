@@ -436,4 +436,28 @@ func main() {
 }
 ```
 
-client端更简单写法
+### client端更简单写法
+
+```go
+func main() {
+	grpc.WithPerRPCCredentials(customCredential{})
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithPerRPCCredentials(customCredential{}))
+	conn, err := grpc.Dial("127.0.0.1:50051", opts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	c := proto.NewGreeterClient(conn)
+	r, err := c.SayHello(context.Background(), &proto.HelloRequest{Name: "bobby"})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(r.Message)
+}
+```
+
+## 10、grpc的验证器
+
