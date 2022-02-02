@@ -461,3 +461,181 @@ func main() {
 
 ## 10、grpc的验证器
 
+### 1. 安装和配置 
+
+**linux**
+
+```shell
+# fetches this repo into $GOPATH
+go get -d github.com/envoyproxy/protoc-gen-validate
+
+# installs PGV into $GOPATH/bin
+make build
+```
+
+**windows**
+
+[exe下载地址](https://oss.sonatype.org/content/repositories/snapshots/io/envoyproxy/protoc-gen-validate/protoc-gen-validate/0.4.0-SNAPSHOT/)
+
+可以点此下载：[📎protoc-gen-validate.zip](https://www.yuque.com/attachments/yuque/0/2020/zip/159615/1603012793423-dd9f2f13-5b25-485b-80c0-390954d3b699.zip)
+
+
+
+将 zip文件中的exe文件拷贝到 go的根补录的bin目录下
+
+生成go源码
+
+```shell
+protoc -I .  --go_out=plugins=grpc:. --validate_out="lang=go:." helloworld.proto
+```
+
+
+
+### 2. proto
+
+1. 新建validate.proto文件内容从 https://github.com/envoyproxy/protoc-gen-validate/blob/master/validate/validate.proto 拷贝
+2. 新建helloworl.proto文件
+
+```protobuf
+syntax = "proto3";
+
+import "validate.proto";
+option go_package=".;proto";
+
+service Greeter {
+    rpc SayHello (Person) returns (Person);
+}
+
+message Person {
+    uint64 id    = 1 [(validate.rules).uint64.gt    = 999];
+
+    string email = 2 [(validate.rules).string.email = true];
+    string name  = 3 [(validate.rules).string = {
+                      pattern:   "^[^[0-9]A-Za-z]+( [^[0-9]A-Za-z]+)*$",max_bytes: 256,}];
+
+}
+```
+
+### 3. 服务端
+
+```go
+package main
+
+import (
+	"context"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"net"
+
+	"google.golang.org/grpc"
+
+	"start/pgv_test/proto"
+)
+
+
+type Server struct{}
+
+func (s *Server) SayHello(ctx context.Context, request *proto.Person) (*proto.Person,
+	error){
+	return &proto.Person{
+		Id: 32,
+	}, nil
+}
+
+type Validator interface {
+	Validate() error
+}
+
+func main(){
+	var interceptor grpc.UnaryServerInterceptor
+	interceptor = func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		// 继续处理请求
+		if r, ok := req.(Validator); ok {
+			if err := r.Validate(); err != nil {
+				return nil, status.Error(codes.InvalidArgument, err.Error())
+			}
+		}
+
+		return handler(ctx, req)
+	}
+	var opts []grpc.ServerOption
+	opts = append(opts, grpc.UnaryInterceptor(interceptor))
+
+	g := grpc.NewServer(opts...)
+	proto.RegisterGreeterServer(g, &Server{})
+	lis, err := net.Listen("tcp", "0.0.0.0:50051")
+	if err != nil{
+		panic("failed to listen:"+err.Error())
+	}
+	err = g.Serve(lis)
+	if err != nil{
+		panic("failed to start grpc:"+err.Error())
+	}
+}
+```
+
+### 4. 客户端
+
+```go
+package  main
+
+import (
+	"context"
+	"fmt"
+	"google.golang.org/grpc"
+	"start/pgv_test/proto"
+)
+
+type customCredential struct{}
+
+
+func main() {
+	var opts []grpc.DialOption
+
+	//opts = append(opts, grpc.WithUnaryInterceptor(interceptor))
+	opts = append(opts, grpc.WithInsecure())
+
+	conn, err := grpc.Dial("localhost:50051", opts...)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	c := proto.NewGreeterClient(conn)
+	//rsp, _ := c.Search(context.Background(), &empty.Empty{})
+	rsp, err := c.SayHello(context.Background(), &proto.Person{
+		Email: "bobby",
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(rsp.Id)
+}
+```
+
+## 11、 grpc的状态码
+
+https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
+
+我们也可以自定义状态码，但是成本比较高
+
+
+
+## 12、 grpc中的错误处理
+
+###  服务端
+
+```go
+st := status.New(codes.InvalidArgument, "invalid username")
+```
+
+###  客户端
+
+```go
+st, ok := status.FromError(err)
+if !ok {
+    // Error was not a status error
+}
+st.Message()
+st.Code()
+```
