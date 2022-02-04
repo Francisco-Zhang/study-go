@@ -639,3 +639,20 @@ if !ok {
 st.Message()
 st.Code()
 ```
+
+## 13、grpc的超时机制
+
+设置超时原因：
+
+1. 网络抖动、网络拥塞
+2. 服务器很慢
+3. A->B->C->D ，设置超时，防止全链路阻塞。
+4. 服务端设置超时不严谨，例如网络原因，即便服务端设置了超时，客户端还有可能超时。所以一般设置客户端超时。
+
+客户端设置超时机制：
+
+```go
+ctx, _ := context.WithTimeout(context.Background(), time.Second*3)
+	_, err = c.SayHello(ctx, &proto.HelloRequest{Name: "bobby"})
+```
+
