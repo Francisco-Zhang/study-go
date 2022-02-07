@@ -310,7 +310,182 @@ func main() {
 	_ = db.AutoMigrate(&User{}) //此处应该有sql语句
 
 	db.Create(&User{})
+}
+```
 
+## 7、通过create方法插入记录
+
+### create insert null
+
+```go
+import (
+	"database/sql"
+	"log"
+	"os"
+	"time"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+type User struct {
+	ID           uint
+	Name         string
+	Email        *string
+	Age          uint8
+	Birthday     *time.Time
+	MemberNumber sql.NullString
+	ActivedAt    sql.NullTime
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+func main() {
+	dsn := "root:admin123@tcp(127.0.0.1:3306)/gorm_test?charset=utf8mb4&parseTime=True&loc=Local"
+
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold: time.Second, // 慢 SQL 阈值
+			LogLevel:      logger.Info, // Log level
+			Colorful:      true,        // 禁用彩色打印
+		},
+	)
+
+	// 全局模式
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: newLogger,
+	})
+	if err != nil {
+		panic(err)
+	}
+	_ = db.AutoMigrate(&User{}) 
+    
+    //sql: INSERT INTO `users` (`name`,`email`,`age`,`birthday`,`member_number`,`actived_at`,`created_at`,`updated_at`) VALUES ('tom',NULL,0,NULL,NULL,NULL,'2022-02-07 12:55:12.798','2022-02-07 12:55:12.798')
+    db.Create(&User{Name: "tom"})
+
+}
+```
+
+### update更新0值
+
+解决仅更新非零值字段的方法有两种
+
+1.  将string 设置为 *string
+2. 使用sql的NULLxxx来解决
+
+```go
+//updates语句下面两种都不会更新零值，但是update语句会更新
+db.Model(&User{ID: 1}).Update("Name", "") 
+db.Model(&User{ID:1}).Updates(User{Name: ""})
+//下面这种指针的写法，会更新
+empty := ""
+db.Model(&User{ID:1}).Updates(User{Email: &empty})
+```
+
+### create返回值
+
+```go
+user := User{
+		Name: "bobby2",
+}
+fmt.Println(user.ID)     //本次打印 0
+result := db.Create(&user)
+fmt.Println(user.ID)             // 返回插入数据的主键，本次打印打印1
+fmt.Println(result.Error)        // 返回 error，本次打印nil，证明没有error
+fmt.Println(result.RowsAffected) // 返回插入记录的条数,该处输出1
+```
+
+
+
+## 8、批量插入和通过map插入记录
+
+### 批量插入
+
+要有效地插入大量记录，请将一个 slice 传递给 Create 方法。 将切片数据传递给 Create 方法，GORM 将生成一个**单一**的 SQL 语句来插入所有数据，并回填主键的值，钩子方法也会被调用。
+
+```go
+var users = []User{{Name: "jinzhu1"}, {Name: "jinzhu2"}, {Name: "jinzhu3"}}
+db.Create(&users)
+
+for _, user := range users {
+  user.ID // 1,2,3
+}
+```
+
+使用 CreateInBatches 创建时，你还可以指定创建的数量，例如：
+
+```go
+var 用户 = []User{name: "jinzhu_1"}, ...., {Name: "jinzhu_10000"}}
+// 数量为 2，会分两次提交，第一次2条数据，第二次1条
+//为什么不一次性提交所有的 还要分批次，原因是sql语句有长度限制。数据量特别大的情况下，这种方法更常用。
+db.CreateInBatches(用户, 2)  
+```
+
+### 创建钩子
+
+GORM 允许用户定义的钩子有 BeforeSave, BeforeCreate, AfterSave, AfterCreate 创建记录时将调用这些钩子方法，请参考 Hooks 中关于生命周期的详细信息
+
+```go
+func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
+  	u.UUID = uuid.New()
+    if u.Role == "admin" {
+        return errors.New("invalid role")
+    }
+    return
+}
+```
+### 根据 Map 创建
+
+GORM 支持根据 `map[string]interface{}` 和 `[]map[string]interface{}{}` 创建记录，例如：
+
+```go
+db.Model(&User{}).Create(map[string]interface{}{
+  "Name": "jinzhu", "Age": 18,
+})
+
+// batch insert from `[]map[string]interface{}{}`
+db.Model(&User{}).Create([]map[string]interface{}{
+  {"Name": "jinzhu_1", "Age": 18},
+  {"Name": "jinzhu_2", "Age": 20},
+})
+```
+
+### 关联创建
+
+创建关联数据时，如果关联值是非零值，这些关联会被 upsert，且它们的 `Hook` 方法也会被调用
+
+```go
+type CreditCard struct {
+  gorm.Model
+  Number   string
+  UserID   uint
+}
+
+type User struct {
+  gorm.Model
+  Name       string
+  CreditCard CreditCard
+}
+
+db.Create(&User{
+  Name: "jinzhu",
+  CreditCard: CreditCard{Number: "411111111111"}
+})
+// INSERT INTO `users` ...
+// INSERT INTO `credit_cards` ...
+```
+
+### 默认值
+
+您可以通过标签 default 为字段定义默认值，如：
+
+```go
+type User struct {
+  ID   int64
+  Name string `gorm:"default:galeone"`
+  Age  int64  `gorm:"default:18"`
 }
 ```
 
