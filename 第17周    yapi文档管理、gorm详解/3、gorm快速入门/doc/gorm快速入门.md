@@ -489,3 +489,61 @@ type User struct {
 }
 ```
 
+## 9、通过take，first、last获取数据
+
+### 检索单个对象
+
+GORM 提供了 `First`、`Take`、`Last` 方法，以便从数据库中检索单个对象。当查询数据库时它添加了 `LIMIT 1` 条件，且没有找到记录时，它会返回 `ErrRecordNotFound` 错误
+
+```go
+// 获取第一条记录（主键升序）
+db.First(&user)
+// SELECT * FROM users ORDER BY id LIMIT 1;
+
+// 获取一条记录，没有指定排序字段
+db.Take(&user)
+// SELECT * FROM users LIMIT 1;
+
+// 获取最后一条记录（主键降序）
+db.Last(&user)
+// SELECT * FROM users ORDER BY id DESC LIMIT 1;
+
+result := db.First(&user)
+result.RowsAffected // 返回找到的记录数
+result.Error        // returns error
+
+// 检查 ErrRecordNotFound 错误
+errors.Is(result.Error, gorm.ErrRecordNotFound)
+```
+
+
+
+### 通过主键查询
+
+```go
+var user User
+//通过主键查询
+//我们不能给user赋值,如果user的id有值，也会被当作查询条件
+result := db.First(&user, 2)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound){
+	fmt.Println("未找到")
+}
+fmt.Println(user.ID)
+```
+
+```go
+result := db.First(&user, []int{1,2,3})
+//SELECT * FROM users WHERE id IN (1,2,3) order by id limit 1;
+```
+
+### 检索全部对象
+
+```go
+var users []User
+result := db.Find(&users)
+fmt.Println("总共记录:", result.RowsAffected)
+for _, user := range users {
+    fmt.Println(user.ID)
+}
+```
+
