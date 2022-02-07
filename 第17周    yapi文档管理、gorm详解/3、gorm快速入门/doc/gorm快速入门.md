@@ -777,3 +777,95 @@ db.Table("users").Where("id IN ?", []int{10, 11}).Updates(map[string]interface{}
 ```
 
 ## 12、gorm的软删除细节
+
+### 删除一条记录
+
+删除一条记录时，**删除对象需要指定主键**，否则会触发 [批量 Delete](https://learnku.com/docs/gorm/v2/delete#batch_delete)，例如：
+
+```go
+// Email 的 ID 是 `10`
+db.Delete(&email)
+// DELETE from emails where id = 10;
+
+// 带额外条件的删除
+db.Where("name = ?", "jinzhu").Delete(&email)
+// DELETE from emails where id = 10 AND name = "jinzhu";
+```
+
+### 根据主键删除
+
+GORM 允许通过内联条件指定主键来检索对象，但只支持整型数值，因为 string 可能导致 SQL 注入。查看 [内联条件、安全](https://learnku.com/docs/gorm/v2/query.thml#inline_conditions) 获取详情
+
+```go
+db.Delete(&User{}, 10)
+// DELETE FROM users WHERE id = 10;
+
+db.Delete(&User{}, "10")
+// DELETE FROM users WHERE id = 10;
+
+db.Delete(&users, []int{1,2,3})
+// DELETE FROM users WHERE id IN (1,2,3);
+```
+
+### 批量删除
+
+如果指定的值不包括主属性，那么 GORM 会执行批量删除，它将删除所有匹配的记录
+
+```go
+db.Where("email LIKE ?", "%jinzhu%").Delete(Email{})
+// DELETE from emails where email LIKE "%jinzhu%";
+
+db.Delete(Email{}, "email LIKE ?", "%jinzhu%")
+// DELETE from emails where email LIKE "%jinzhu%";
+```
+
+### 软删除
+
+如果您的模型包含了一个 gorm.deletedat 字段（gorm.Model 已经包含了该字段)，它将自动获得软删除的能力！
+
+拥有软删除能力的模型调用 Delete 时，记录不会被从数据库中真正删除。但 GORM 会将 DeletedAt 置为当前时间， 并且你不能再通过正常的查询方法找到该记录。
+
+```go
+// user 的 ID 是 `111`
+db.Delete(&user)
+// UPDATE users SET deleted_at="2013-10-29 10:23" WHERE id = 111;
+
+// 批量删除
+db.Where("age = ?", 20).Delete(&User{})
+// UPDATE users SET deleted_at="2013-10-29 10:23" WHERE age = 20;
+
+// 在查询时会忽略被软删除的记录
+db.Where("age = 20").Find(&user)
+// SELECT * FROM users WHERE age = 20 AND deleted_at IS NULL;
+```
+
+如果您不想引入 `gorm.Model`，您也可以这样启用软删除特性：
+
+```go
+type User struct {
+  ID      int
+  Deleted gorm.DeletedAt
+  Name    string
+}
+```
+
+### 查找被软删除的记录
+
+您可以使用 `Unscoped` 找到被软删除的记录
+
+```go
+db.Unscoped().Where("age = 20").Find(&users)
+// SELECT * FROM users WHERE age = 20;
+```
+
+
+
+### 永久删除
+
+您也可以使用 `Unscoped` 永久删除匹配的记录
+
+```go
+db.Unscoped().Delete(&order)
+// DELETE FROM orders WHERE id=10;
+```
+
