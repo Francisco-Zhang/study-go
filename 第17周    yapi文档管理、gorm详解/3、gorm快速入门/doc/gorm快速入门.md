@@ -547,3 +547,233 @@ for _, user := range users {
 }
 ```
 
+
+
+## 10、gorm的基本查询
+
+查询方式条件有三种 1. string 2. struct 3. map，优先使用第二种，然后第三种，再第一种。
+
+第2中有0值问题，第3种可读性强，第1种最灵活。
+
+### String 条件
+
+```go
+// 获取第一条匹配的记录,表名由第二部分决定。
+db.Where("name = ?", "jinzhu").First(&user)
+// SELECT * FROM users WHERE name = 'jinzhu' ORDER BY id LIMIT 1;
+
+// 获取全部匹配的记录
+db.Where("name <> ?", "jinzhu").Find(&users)
+// SELECT * FROM users WHERE name <> 'jinzhu';
+
+// IN
+db.Where("name IN ?", []string{"jinzhu", "jinzhu 2"}).Find(&users)
+// SELECT * FROM users WHERE name IN ('jinzhu','jinzhu 2');
+
+// LIKE
+db.Where("name LIKE ?", "%jin%").Find(&users)
+// SELECT * FROM users WHERE name LIKE '%jin%';
+
+// AND
+db.Where("name = ? AND age >= ?", "jinzhu", "22").Find(&users)
+// SELECT * FROM users WHERE name = 'jinzhu' AND age >= 22;
+
+// Time
+db.Where("updated_at > ?", lastWeek).Find(&users)
+// SELECT * FROM users WHERE updated_at > '2000-01-01 00:00:00';
+
+// BETWEEN
+db.Where("created_at BETWEEN ? AND ?", lastWeek, today).Find(&users)
+// SELECT * FROM users WHERE created_at BETWEEN '2000-01-01 00:00:00' AND '2000-01-08 00:00:00';
+```
+
+### Struct & Map 条件
+
+上面中的where需要知道数据库字段的准确名称，使用struct可以进行属性与字段的配置，屏蔽细节。可以不必记住数据库字段名称。
+
+```go
+
+type User struct {
+	ID           uint
+	MyName       string `gorm:"column:name"`
+	Email        *string
+	Age          uint8
+	Birthday     *time.Time
+	MemberNumber sql.NullString
+	ActivedAt    sql.NullTime
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+var user User
+var users []User
+//db.Where("name = ?", "bobby").First(&user)
+db.Where(&User{MyName:"bobby"}).First(&user)
+db.Where(&User{MyName:"bobby1", Age: 0}).Find(&users)
+db.Where(map[string]interface{}{"name": "bobby", "age":0}).Find(&users)
+```
+
+```go
+// Struct
+db.Where(&User{Name: "jinzhu", Age: 20}).First(&user)
+// SELECT * FROM users WHERE name = "jinzhu" AND age = 20 ORDER BY id LIMIT 1;
+
+// Map
+db.Where(map[string]interface{}{"name": "jinzhu", "age": 20}).Find(&users)
+// SELECT * FROM users WHERE name = "jinzhu" AND age = 20;
+
+// 主键切片条件
+db.Where([]int64{20, 21, 22}).Find(&users)
+// SELECT * FROM users WHERE id IN (20, 21, 22);
+```
+
+
+
+**注意** 当使用结构作为条件查询时，GORM 只会查询非零值字段。这意味着如果您的字段值为 `0`、`''`、`false` 或其他 [零值](https://tour.golang.org/basics/12)，该字段不会被用于构建查询条件，例如：
+
+```go
+db.Where(&User{Name: "jinzhu", Age: 0}).Find(&users)  //不拼凑age=0
+// SELECT * FROM users WHERE name = "jinzhu";
+```
+
+您可以使用 map 来构建查询条件，例如：
+
+```go
+db.Where(map[string]interface{}{"Name": "jinzhu", "Age": 0}).Find(&users)   //拼凑age=0
+// SELECT * FROM users WHERE name = "jinzhu" AND age = 0;
+```
+
+### 内联条件
+
+用法与 `Where` 类似，实际开发中，可以只使用where
+
+```go
+// SELECT * FROM users WHERE id = 23;
+// 根据主键获取记录，如果是非整型主键
+db.First(&user, "id = ?", "string_primary_key")
+// SELECT * FROM users WHERE id = 'string_primary_key';
+
+// Plain SQL
+db.Find(&user, "name = ?", "jinzhu")
+// SELECT * FROM users WHERE name = "jinzhu";
+
+db.Find(&users, "name <> ? AND age > ?", "jinzhu", 20)
+// SELECT * FROM users WHERE name <> "jinzhu" AND age > 20;
+
+// Struct
+db.Find(&users, User{Age: 20})
+// SELECT * FROM users WHERE age = 20;
+
+// Map
+db.Find(&users, map[string]interface{}{"age": 20})
+// SELECT * FROM users WHERE age = 20;
+```
+
+### Or 条件
+
+```go
+db.Where("role = ?", "admin").Or("role = ?", "super_admin").Find(&users)
+// SELECT * FROM users WHERE role = 'admin' OR role = 'super_admin';
+
+// Struct
+db.Where("name = 'jinzhu'").Or(User{Name: "jinzhu 2", Age: 18}).Find(&users)
+// SELECT * FROM users WHERE name = 'jinzhu' OR (name = 'jinzhu 2' AND age = 18);
+
+// Map
+db.Where("name = 'jinzhu'").Or(map[string]interface{}{"name": "jinzhu 2", "age": 18}).Find(&users)
+// SELECT * FROM users WHERE name = 'jinzhu' OR (name = 'jinzhu 2' AND age = 18);
+```
+
+## 11、 gorm的更新操作
+
+### 保存所有字段
+
+`Save` 会保存所有的字段，即使字段是零值
+
+```go
+db.First(&user)//id=111
+
+user.Name = "jinzhu 2"
+user.Age = 100
+db.Save(&user)
+// UPDATE users SET name='jinzhu 2', age=100, birthday='2016-01-01', updated_at = '2013-11-17 21:34:10' WHERE id=111;
+```
+
+```go
+var user User
+
+//1. 通过save方法更新
+user.MyName = "bobby test"
+user.Age = 100
+user.ID = 0
+db.Save(&user) //save方法是一个集create和update于一体的操作,ID不存在的话执行insert。
+
+//通过update方法更新
+db.Model(&User{}).Where("name = ?", "bobby").Update("name", "hello")
+```
+
+### 更新单个列
+
+当使用 Update 更新单个列时，你需要指定条件，否则会返回 ErrMissingWhereClause 错误，查看 Block Global Updates 获取详情。当使用了 Model 方法，且该对象主键有值，该值会被用于构建条件，例如：
+
+```go
+// 条件更新
+db.Model(&User{}).Where("active = ?", true).Update("name", "hello")
+// UPDATE users SET name='hello', updated_at='2013-11-17 21:34:10' WHERE active=true;
+
+// User 的 ID 是 `111`
+db.Model(&user).Update("name", "hello")
+// UPDATE users SET name='hello', updated_at='2013-11-17 21:34:10' WHERE id=111;
+
+// 根据条件和 model 的值进行更新
+db.Model(&user).Where("active = ?", true).Update("name", "hello")
+// UPDATE users SET name='hello', updated_at='2013-11-17 21:34:10' WHERE id=111 AND active=true;
+```
+
+`Updates` 方法支持 `struct` 和 `map[string]interface{}` 参数。当使用 `struct` 更新时，默认情况下，GORM 只会更新非零值的字段
+
+```go
+// 根据 `struct` 更新属性，只会更新非零值的字段
+db.Model(&user).Updates(User{Name: "hello", Age: 18, Active: false})
+// UPDATE users SET name='hello', age=18, updated_at = '2013-11-17 21:34:10' WHERE id = 111;
+
+// 根据 `map` 更新属性,可以更新0值字段
+db.Model(&user).Updates(map[string]interface{}{"name": "hello", "age": 18, "actived": false})
+// UPDATE users SET name='hello', age=18, actived=false, updated_at='2013-11-17 21:34:10' WHERE id=111;
+```
+
+**注意** 当通过 struct 更新时，GORM 只会更新非零字段。 如果您想确保指定字段被更新，你应该使用 `Select` 更新选定字段，或使用 `map` 来完成更新操作
+
+### 更新选定字段
+
+如果您想要在更新时选定、忽略某些字段，您可以使用 `Select`、`Omit`，Select 和 Struct （可以选中更新零值字段）
+
+```go
+// Select 和 Map
+// User's ID is `111`:
+db.Model(&user).Select("name").Updates(map[string]interface{}{"name": "hello", "age": 18, "actived": false})
+// UPDATE users SET name='hello' WHERE id=111;
+
+db.Model(&user).Omit("name").Updates(map[string]interface{}{"name": "hello", "age": 18, "actived": false})
+// UPDATE users SET age=18, actived=false, updated_at='2013-11-17 21:34:10' WHERE id=111;
+
+// Select 和 Struct （可以选中更新零值字段）
+db.Model(&result).Select("Name", "Age").Updates(User{Name: "new_name", Age: 0})
+// UPDATE users SET name='new_name', age=0 WHERE id=111;
+```
+
+### 批量更新
+
+如果您尚未通过 `Model` 指定记录的主键，则 GORM 会执行批量更新
+
+```go
+// 根据 struct 更新
+db.Model(User{}).Where("role = ?", "admin").Updates(User{Name: "hello", Age: 18})
+// UPDATE users SET name='hello', age=18 WHERE role = 'admin;
+
+// 根据 map 更新
+db.Table("users").Where("id IN ?", []int{10, 11}).Updates(map[string]interface{}{"name": "hello", "age": 18})
+// UPDATE users SET name='hello', age=18 WHERE id IN (10, 11);
+```
+
+## 12、gorm的软删除细节
