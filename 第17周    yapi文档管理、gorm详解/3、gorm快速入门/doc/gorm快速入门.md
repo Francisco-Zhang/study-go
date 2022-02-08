@@ -869,3 +869,46 @@ db.Unscoped().Delete(&order)
 // DELETE FROM orders WHERE id=10;
 ```
 
+
+
+## 13、 表的关联插入
+
+### Belongs To
+
+`belongs to` 会与另一个模型建立了一对一的连接。 这种模型的每一个实例都 “属于” 另一个模型的一个实例。
+
+例如，您的应用包含 user 和 company，并且每个 user 都可以分配给一个 company
+
+```go
+// `User` 属于 `Company`，`CompanyID` 是外键,是数据库字段。
+type User struct {
+  gorm.Model
+  Name      string
+  CompanyID int
+  Company   Company
+}
+
+type Company struct {
+  ID   int
+  Name string
+}
+
+db.AutoMigrate(&User{}) //新建了user表和company表，并设置了外键，会自动创建两张表。
+
+//保存有两种方法，如果company已经存在，使用第二种。
+//第一种是生成 两条 insert 语句。新增两条记录。
+db.Create(&User{
+	Name:      "bobby",
+	Company: Company{
+		Name:"慕课网",
+	},
+})
+//第二种是 只insert user,company_id使用已有的 id=1。不会新增company
+db.Create(&User{
+    Name: "bobby2",
+    Company: Company{
+        ID: 1,
+    },
+})
+```
+
