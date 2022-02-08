@@ -1123,3 +1123,81 @@ for _, card := range user.CreditCards {
 }
 ```
 
+## 16、 gorm处理多对多的关系
+
+### Many To Many
+
+Many to Many 会在两个 model 中添加一张连接表。
+
+例如，您的应用包含了 user 和 language，且一个 user 可以说多种 language，多个 user 也可以说一种 language。
+
+```go
+// User 拥有并属于多种 language，`user_languages` 是连接表
+type User struct {
+  gorm.Model
+  Languages []Language `gorm:"many2many:user_languages;"`
+}
+
+type Language struct {
+  gorm.Model
+  Name string
+}
+```
+
+当使用 GORM 的 `AutoMigrate` 为 `User` 创建表时，**GORM 会自动创建连接表**，总共生成 3 张表
+
+### create
+
+```go
+languages := []Language{}
+languages = append(languages, Language{Name:"go"})
+languages = append(languages, Language{Name:"java"})
+user := User3{
+	Languages: languages,
+}
+
+db.Create(&user)  //会向三张表中插入数据
+```
+
+### Preload预加载
+
+```go
+var user User3
+db.Preload("Languages").First(&user)  //会查询三张表，生成3条select语句。
+for _, language := range user.Languages{
+	fmt.Println(language.Name)
+}
+```
+
+### 关联模式
+
+关联模式包含一些在处理关系时有用的方法
+
+```go
+// 开始关联模式
+var user User
+//user 不为空的情况下也不会生成关联sql，需要Find才会关联查询。此处只是进行匹配
+db.Model(&user).Association("Languages")  
+// `user` 是源模型，它的主键不能为空
+// 关系的字段名是 `Languages`
+// 如果匹配了上面两个要求，会开始关联模式，否则会返回错误
+db.Model(&user).Association("Languages").Error
+```
+
+
+
+```go
+//如果我已经取出一个用户来了，但是这个用户我们之前没有使用preload来加载对应的Languages
+//不是说用户有language我们就一定要取出来、
+
+var user User3
+db.First(&user)
+var laguages []Language
+//user 为空的情况下不会生成关联sql
+//model中的user是已经查询到的user,user_laguage left join laguage
+_ = db.Model(&user).Association("Languages").Find(&laguages) 
+for _, language := range laguages {
+    fmt.Println(language.Name)
+}
+```
+
