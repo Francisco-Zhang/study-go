@@ -912,3 +912,214 @@ db.Create(&User{
 })
 ```
 
+### 重写外键
+
+要定义一个 belongs to 关系，必须存在外键，默认的外键使用拥有者的类型名加上主字段名
+
+对于上面例子，定义属于 Company 的 User，其外键一般是 CompanyID
+
+此外，GORM 还提供了一种自定义外键的方法，例如：
+
+```go
+type User struct {
+  gorm.Model
+  Name         string
+  CompanyRefer int
+  Company      Company `gorm:"foreignKey:CompanyRefer"`
+  // 使用 CompanyRefer 作为外键
+}
+
+type Company struct {
+  ID   int
+  Name string
+}
+```
+
+
+
+### 重写引用
+
+对于 belongs to 关系，GORM 通常使用拥有者的主字段作为外键的值。 对于上面的例子，它是 Company 的 ID 字段
+
+当您将 user 分配给某个 company 时，GORM 会将 company 的 ID 保存到用户的 CompanyID 字段
+
+此外，您也可以使用标签 references 手动更改它，例如：
+
+```go
+type User struct {
+  gorm.Model
+  Name      string
+  CompanyID string
+  Company   Company `gorm:"references:Code"` // 使用 Code 作为引用
+}
+
+type Company struct {
+  ID   int
+  Code string
+  Name string
+}
+```
+
+
+
+## 14、 通过preload和joins查询多表
+
+### 预加载
+
+GORM 可以通过 `Preload`、`Joins` 预加载 belongs to 关联的记录，查看 [预加载](https://learnku.com/docs/gorm/v2/preload) 获取详情
+
+```go
+type User struct {
+  gorm.Model
+  Name      string
+  CompanyID int
+  Company   Company
+}
+
+type Company struct {
+  ID   int
+  Name string
+}
+
+var user User
+//只会取user,不会查询company
+db.First(&user)
+db.Preload("Company").First(&user)
+db.Joins("Company").First(&user)
+fmt.Println(user.Name, user.Company.ID)
+
+
+//Preload打印的sql如下，sql打印顺序并不代表执行顺序，应该是先执行了第2条sql，后第1条，但是第2条sql是等preload完成执行完再打印的。
+[0.307ms] [rows:1] SELECT * FROM `companies` WHERE `companies`.`id` = 2
+[1.326ms] [rows:1] SELECT * FROM `users` WHERE `users`.`deleted_at` IS NULL ORDER BY `users`.`id` LIMIT 1
+```
+
+### Preload
+
+GORM 允许在 `Preload` 的其它 SQL 中直接加载关系，例如：
+
+```go
+type User struct {
+  gorm.Model
+  Username string
+  Orders   []Order
+}
+
+type Order struct {
+  gorm.Model
+  UserID uint
+  Price  float64
+}
+
+// 查找 user 时预加载相关 Order
+db.Preload("Orders").Find(&users)
+// SELECT * FROM users;
+// SELECT * FROM orders WHERE user_id IN (1,2,3,4);
+
+db.Preload("Orders").Preload("Profile").Preload("Role").Find(&users)
+// SELECT * FROM users;
+// SELECT * FROM orders WHERE user_id IN (1,2,3,4); // has many
+// SELECT * FROM profiles WHERE user_id IN (1,2,3,4); // has one
+// SELECT * FROM roles WHERE id IN (4,5,6); // belongs to
+```
+
+### Joins 预加载
+
+您可以使用 `Joins` 实现单条 SQL 预加载关联记录，例如：
+
+```go
+db.Joins("Company").Find(&users)
+// SELECT `users`.`id`,`users`.`name`,`users`.`age`,`Company`.`id` AS `Company__id`,`Company`.`name` AS `Company__name` FROM `users` LEFT JOIN `companies` AS `Company` ON `users`.`company_id` = `Company`.`id`;
+```
+
+指定 Joins 条件
+
+```go
+type result struct {
+  Name  string
+  Email string
+}
+db.Model(&User{}).Select("users.name, emails.email").Joins("left join emails on emails.user_id = users.id").Scan(&result{})
+// SELECT users.name, emails.email FROM `users` left join emails on emails.user_id = users.id
+
+rows, err := db.Table("users").Select("users.name, emails.email").Joins("left join emails on emails.user_id = users.id").Rows()
+for rows.Next() {
+  ...
+}
+
+db.Table("users").Select("users.name, emails.email").Joins("left join emails on emails.user_id = users.id").Scan(&results)
+
+// 带参数的多表连接
+db.Joins("JOIN emails ON emails.user_id = users.id AND emails.email = ?", "jinzhu@example.org").Joins("JOIN credit_cards ON credit_cards.user_id = users.id").Where("credit_cards.number = ?", "411111111111").Find(&user)
+```
+
+
+
+## 15、 has many关系
+
+### Has Many
+
+has many 与另一个模型建立了一对多的连接。 不同于 has one，拥有者可以有零或多个关联模型。
+
+例如，您的应用包含 user 和 credit card 模型，且每个 user 可以有多张 credit card。
+
+```go
+// User 有多张 CreditCard，UserID 是外键
+type User struct {
+  gorm.Model
+  CreditCards []CreditCard
+}
+
+type CreditCard struct {
+  gorm.Model
+  Number string
+  UserID uint
+}
+```
+
+### 重写外键
+
+要定义 has many 关系，同样必须存在外键。 默认的外键名是拥有者的类型名加上其主键字段名
+
+例如，要定义一个属于 User 的模型，则其外键应该是 UserID。
+
+此外，想要使用另一个字段作为外键，您可以使用 foreignKey 标签自定义它：
+
+```go
+type User struct {
+  gorm.Model
+  CreditCards []CreditCard `gorm:"foreignKey:UserRefer"`
+}
+
+type CreditCard struct {
+  gorm.Model
+  Number    string
+  UserRefer uint
+}
+```
+
+### Preload反向查询
+
+```go
+//在大型的系统中，我个人不建议使用外键约束，外键约束也有很大的优点： 数据的完整性
+/*
+     外键约束会让给你的数据很完整，即使是业务代码有些人考虑的不严谨
+     在大型的系统，考虑到性能，高并发的系统中一般不使用数据库外键约束，自己在业务层面保证数据的一致性
+*/
+//user := User{}
+//db.Create(&user)
+//db.Create(&CreditCard{
+//	Number:    "12",
+//	UserRefer: user.ID,
+//})
+//db.Create(&CreditCard{
+//	Number:    "34",
+//	UserRefer: user.ID,
+//})
+var user User
+db.Preload("CreditCards").First(&user)  //和belongs to 没太大区别，只是以哪个表为基准取数据。
+for _, card := range user.CreditCards {
+    fmt.Println(card.Number)  //打印 12、34
+}
+```
+
