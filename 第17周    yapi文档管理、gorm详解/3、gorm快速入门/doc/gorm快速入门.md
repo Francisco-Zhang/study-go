@@ -1201,3 +1201,57 @@ for _, language := range laguages {
 }
 ```
 
+## 17、 gorm的表名自定义、自定义beforecreate逻辑
+
+### 表名自定义场景
+
+1. 我们自己定义表名是什么
+2. 统一的给所有的表名加上一个前缀
+
+在gorm中可以通过给某一个struct添加TableName方法来自定义表名
+
+```go
+type Language struct {
+	gorm.Model
+	Name    string
+}
+
+func (Language) TableName() string{
+	return "my_language"
+}
+//然后使用 db.AutoMigrate(&Language{}) 创建表
+```
+
+通过配置，统一的给所有的表名加上一个前缀
+
+```go
+// 全局模式
+//NamingStrategy和Tablename不能同时配置，需要将Tablename注释才能生效。
+db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+    NamingStrategy: schema.NamingStrategy{
+        TablePrefix: "mxshop_",
+    },
+    Logger: newLogger,
+})
+```
+
+### 自动属性赋值
+
+```go
+type Language struct {
+	gorm.Model
+	Name    string
+	AddTime sql.NullTime //每个记录创建的时候自动加上当前时间加入到AddTime中
+}
+
+func (l *Language) BeforeCreate(tx *gorm.DB) (err error){
+	l.AddTime = time.Now()
+	return
+}
+
+//insert的时候，会自动添加AddTime值。AddTime:time.time 类型，下面方法会因为不允许零值而无法插入数据。
+db.Create(&Language{
+		Name: "python",
+	})
+```
+
