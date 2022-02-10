@@ -1,4 +1,4 @@
-1、什么是grpc和protobuf
+## 1、什么是grpc和protobuf
 
 ### grpc
 
@@ -22,6 +22,35 @@ java中的dubbo 使用了 dubbo/rmi/hessian messagepack 等协议，如果你懂
 ![2](img/2.png)
 
 如果是服务直接内部调用使用protobuf会比较好一些，如果是作为开发接口供客户端调用使用json会比较好，因为json没有加密，容易看懂。
+
+
+
+### gRPC over HTTP/2
+
+准确来说gRPC设计上是分层的，底层支持不同的协议，目前gRPC支持：
+
+gRPC over HTTP2
+gRPC Web
+但是大多数情况下，讨论都是基于gRPC over HTTP2。
+
+下面从一个真实的gRPC SayHello请求，查看它在HTTP/2上是怎样实现的。用wireshark抓包：
+
+![4](img/4.png)
+
+可以看到下面这些Header：
+
+Header: :authority: localhost:50051
+Header: :path: /helloworld.Greeter/SayHello
+Header: :method: POST
+Header: :scheme: http
+Header: content-type: application/grpc
+Header: user-agent: grpc-java-netty/1.11.0
+
+然后请求的参数在DATA frame里：
+
+GRPC Message: /helloworld.Greeter/SayHello, Request
+简而言之，gGRPC把元数据放到HTTP/2 Headers里，请求参数序列化之后放到 DATA frame里。
+
 
 
 
