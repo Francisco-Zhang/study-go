@@ -679,3 +679,213 @@ func main() {
 ```
 
 ## 12、 通过abort终止中间件后续逻辑的执行
+
+如果我们想在中间件函数内提前终止，不再继续向下执行，必须使用 c.Abort()，使用return 不起作用， return 后然后 会执行 ping 处理函数。
+
+```go
+func TokenRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var token string
+		for k, v := range c.Request.Header {
+			if k == "X-Token" {
+				token = v[0]
+			}
+		}
+		if token != "bobby" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"msg": "未登录",
+			})
+            // 挑战，我们会有一个疑问，为什么 return 都阻止不了后续逻辑的执行。
+            //此处使用 return 仍然能正常返回接口响应。响应结果有两个json，一个是未登录，一个是 pong
+			c.Abort() 
+		}
+		c.Next()
+	}
+}
+```
+
+## 13、 gin的中间件原理源码分析
+
+
+
+## ![2](img/2.PNG)
+
+中间件以及接口处理方法是放到一个切片里边的。
+
+当在一个方法中执行next()时，index会++，然后执行下一个方法。
+
+当方法通过return 结束时，如果 index 没有在切片的末尾，则gin 会接着继续执行 切片的函数。
+
+想要提前终止，就需要通过 abort()方法，强行改变 index 的值，将index设置成最大值。gin就不会继续执行队列内的函数。
+
+
+
+## 14、 gin返回html
+
+gin 没有自己实现一个 html 模板语法，而是使用了 go 标准库中的 模板
+
+官方地址：https://golang.org/pkg/html/template/
+
+翻译： https://colobu.com/2019/11/05/Golang-Templates-Cheatsheet/#if/else_%E8%AF%AD%E5%8F%A5
+
+gin 一般用来通过 restfull接口实现微服务的调用，返回html 的情况比较少。所以不是重点。
+
+
+
+**模板在web系统中的地位：**
+
+![3](img/3.PNG)
+
+
+
+模板文件可以是 .tmpl 也可以是 html，没有大的区别。
+
+```go
+//这种是相对路径，没法直接在IDE里边运行，会因为路径错误而程序报错
+//在控制台build，然后运行可执行文件，路径正确，程序正常运行。
+router.LoadHTMLFiles("templates/index.tmpl", "templates/goods.html")
+```
+
+为什么我们在Goland里边直接运行程序，没有看到生成 .exe 可执行文件。是因为IDE把可执行文件生成在了临时目录。
+
+```go
+//为什么我们通过goland运行main.go的时候并没有生成main.exe文件
+dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+fmt.Println(dir)
+//C:\Users\Francisco\AppData\Local\Temp\GoLand\___1go_build_OldPackageTest_gin_start_ch09.exe
+```
+
+代码示例： 需要在templates目录下新建 index.tmpl 文件。
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"net/http"
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	router := gin.Default()
+	//LoadHTMLFiles会将指定的目录下的文件加载好， 相对目录
+	//为什么我们通过goland运行main.go的时候并没有生成main.exe文件
+	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+	fmt.Println(dir)
+	
+	router.LoadHTMLFiles("templates/index.tmpl")
+    
+	router.GET("/index", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{
+			"title": "慕课网",
+		})
+	})
+
+	router.Run(":8083")
+}
+```
+
+
+
+## 15、 加载多个html文件
+
+### 方法一
+
+```go
+router.LoadHTMLFiles("templates/index.tmpl", "templates/goods.html")
+```
+
+### 方法二
+
+如果文件过多的话，采用下面这种模式
+
+```go
+//会加载 templates 二级目录下面所有文件，templates/* 在有二级目录的情况下会报错
+//采用这种模板路径，一级目录下的文件无法被加载，所有 index.tmpl 需要被放到 default 目录下面。
+router.LoadHTMLGlob("templates/**/*")
+```
+
+### 模板文件名同名问题解决
+
+```go
+// 先使用 define 重命名模板名
+{{define "goods/list.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<link rel="stylesheet" href="/static/css/style.css">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h1>商品列表页</h1>
+</body>
+</html>
+{{end}}
+
+
+//html 或者 tmpl 文件都可以作为模板文件
+//如果没有在模板中使用define定义 那么我们就可以使用默认的文件名来找，并且不能加路径区分，这样文件同名的情况下会出现问题。
+router.GET("/goods/list", func(c *gin.Context) {
+    c.HTML(http.StatusOK, "goods/list.html", gin.H{
+        "title": "慕课网",
+    })
+})
+```
+
+## 16、 static静态文件的处理
+
+```go
+//第一个/static 是url /static 路径， 第二个参数 代表目录。
+router.Static("/static", "./static")
+
+//html 引用
+<link rel="stylesheet" href="/static/css/style.css">
+```
+
+## 17、 gin的优雅退出
+
+需要在控制台运行，然后使用 ctl+c ，信号才会起作用。
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+func main() {
+	//优雅退出 就是当我们关闭程序的时候，保证程序应该做完一些后续处理再退出，而不是突然终止造成数据丢失。
+	//微服务 启动之前或启动之后都会做一件事：将当前服务的ip地址和端口号注册到注册中心
+	//没有优雅退出，导致程序停止了之后没有告知注册中心。
+	router := gin.Default()
+
+	router.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "pong",
+		})
+	})
+
+	go func() {
+		router.Run(":8083")
+	}()
+
+	//如果想要接收到信号
+	quit := make(chan os.Signal)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) //ctl+c 和 kill 信号
+
+	<-quit
+	//处理后续逻辑，完成优雅退出
+	fmt.Println("关闭服务中.....")
+	fmt.Println("注销服务.....")
+}
+
+```
+
