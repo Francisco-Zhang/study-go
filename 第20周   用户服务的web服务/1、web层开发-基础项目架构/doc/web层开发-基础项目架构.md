@@ -107,3 +107,85 @@ zap.S().Infof("启动服务器,端口：%d", port) //这种写法可以缩短代
 ## 6 、gin调用grpc服务-1
 
 ## 7 、gin调用grpc服务-2
+
+## 8 、配置文件 - viper
+
+### 介绍
+
+viper：配置文件管理库，Viper是适用于Go应用程序（包括Twelve-Factor App）的完整配置解决方案。它被设计用于在应用程序中工作，并且可以处理所有类型的配置需求和格式。
+
+**它支持以下特性:**
+
+- **设置默认值**
+- **从JSON、TOML、YAML、HCL、envfile和Java properties格式的配置文件读取配置信息**
+- **实时监控和重新读取配置文件（可选）**
+- **从环境变量中读取**
+- **从远程配置系统（etcd或Consul）读取并监控配置变化**
+- **从命令行参数读取配置**
+- **从buffer读取配置**
+- **显式配置值**
+
+### 安装
+
+```go
+go get github.com/spf13/viper
+```
+
+### 使用
+
+最简单使用：
+
+```go
+func main() {
+	v := viper.New()
+	//文件的路径如何设置 goland 运行配置里的 working directory就是工作目录
+	//命令行运行，需要切换到 项目根目录，然后运行 go run viper_test/ch01/main.go
+	v.SetConfigFile("viper_test/ch01/config.yaml")
+	if err := v.ReadInConfig(); err != nil {
+		panic(err)
+	}
+	
+	fmt.Println(v.Get("name"))
+}
+```
+
+映射到struct:
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/spf13/viper"
+)
+
+type ServerConfig struct {
+	ServiceName string `mapstructure:"name"`
+	Port        int    `mapstructure:"port"`
+}
+
+func main() {
+	v := viper.New()
+	//文件的路径如何设置 goland 运行配置里的 working directory就是工作目录
+	//命令行运行，需要切换到 项目根目录，然后运行 go run viper_test/ch01/main.go
+	v.SetConfigFile("viper_test/ch01/config.yaml")
+	if err := v.ReadInConfig(); err != nil {
+		panic(err)
+	}
+	serverConfig := ServerConfig{}
+	if err := v.Unmarshal(&serverConfig); err != nil {
+		panic(err)
+	}
+	fmt.Println(serverConfig)
+	fmt.Printf("%V", v.Get("name"))
+}
+```
+
+yaml:
+
+```yaml
+name: 'user-web'
+port: 3306
+```
+
+9 、viper的配置环境开发环境和生产环境隔离
