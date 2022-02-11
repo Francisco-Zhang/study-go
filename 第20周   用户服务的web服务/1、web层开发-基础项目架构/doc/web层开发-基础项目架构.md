@@ -3,7 +3,7 @@
 1. 新建项目mxshop-api
 2. 新建目录user-web
 3. user-web下面新建子目录 api、config、forms、global、initialize、middlewares、proto、router、utils、validator等目录
-4. 项目根目录新建启动文件 main.go
+4. user-web模块下面新建启动文件 main.go
 
 ## 2、 go高性能日志库 - zap使用
 
@@ -263,3 +263,4 @@ func main() {
 }
 ```
 
+## 10、 viper集成到gin的web服务中
