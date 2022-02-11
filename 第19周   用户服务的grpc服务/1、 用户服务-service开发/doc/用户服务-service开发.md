@@ -229,4 +229,42 @@ Goland 启动参数配置
 
 命令行运行： main.exe  -port 8888
 
-查看参数命令： main.ext -h
+查看参数命令： main.exe  -h
+
+
+
+## 11、 批量生产用户
+
+```go
+options := &password.Options{16, 100, 32, sha512.New}
+salt, encodedPwd := password.Encode("admin123", options)
+newPassword := fmt.Sprintf("$pbkdf2-sha512$%s$%s", salt, encodedPwd)
+fmt.Println(newPassword)
+
+for i := 0; i < 10; i++ {
+    user := model.User{
+        NickName: fmt.Sprintf("bobby%d", i),
+        Mobile:   fmt.Sprintf("1878222222%d", i),
+        Password: newPassword,
+    }
+    db.Save(&user)
+}
+```
+
+
+
+## 12、 测试用户微服务接口
+
+## 13、课后作业
+
+
+
+![2](img/2.PNG)
+
+
+
+
+
+![3](img/3.PNG)
+
+![4](img/4.png)
