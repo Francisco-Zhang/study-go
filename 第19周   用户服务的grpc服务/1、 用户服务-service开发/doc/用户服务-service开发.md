@@ -115,3 +115,118 @@ fmt.Println(genMd5("xxxxx_123456"))
 //e10adc3949ba59abbe56e057f20f883e
 ```
 
+## 4 、md5盐值加密解决用户密码安全问题
+
+```go
+salt, encodedPwd = password.Encode("generic password", nil)  //encodedPwd 加密后密码， salt 盐值
+fmt.Println(salt)
+fmt.Println(encodedPwd)
+check := password.Verify("generic password", salt, encodedPwd, nil)  // 验证
+fmt.Println(check) // true
+```
+
+
+
+salt要保存到数据库，但是新增字段侵入性太强。所以合并到password一个字段。
+
+```go
+options := &password.Options{16, 100, 32, sha512.New}  //缩短密码长度，16指定长度
+salt, encodedPwd := password.Encode("admin123", options)
+newPassword := fmt.Sprintf("$pbkdf2-sha512$%s$%s", salt, encodedPwd)    //算法+salt+密码
+fmt.Println(newPassword)
+```
+
+解析验证
+
+```go
+passwordInfo := strings.Split(newPassword, "$")
+fmt.Println(passwordInfo)
+check := password.Verify("generic password", passwordInfo[2], passwordInfo[3], options)
+fmt.Println(check) // true
+```
+
+## 5、 定义proto接口
+
+```protobuf
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+option go_package = "./;proto";
+
+service User{
+    rpc GetUserList(PageInfo) returns (UserListResponse); // 用户列表
+    rpc GetUserByMobile(MobileRequest) returns (UserInfoResponse); //通过mobile查询用户
+    rpc GetUserById(IdRequest) returns (UserInfoResponse); //通过id查询用户
+    rpc CreateUser(CreateUserInfo) returns (UserInfoResponse); // 添加用户
+    rpc UpdateUser(UpdateUserInfo) returns (google.protobuf.Empty); // 更新用户
+    rpc CheckPassWord(PasswordCheckInfo) returns (CheckResponse); //检查密码
+}
+
+message PasswordCheckInfo {
+    string password = 1;
+    string encryptedPassword = 2;
+}
+
+
+message CheckResponse{
+    bool success = 1;
+}
+
+message PageInfo {
+    uint32 pn = 1;
+    uint32 pSize = 2;
+}
+
+message MobileRequest{
+    string mobile = 1;
+}
+
+message IdRequest {
+    int32 id = 1;
+}
+
+message CreateUserInfo {
+    string nickName = 1;
+    string passWord = 2;
+    string mobile = 3;
+}
+
+message UpdateUserInfo {
+    int32 id = 1;
+    string nickName = 2;
+    string gender = 3;
+    uint64 birthDay = 4;
+}
+
+message UserInfoResponse {
+    int32 id = 1;
+    string passWord = 2;
+    string mobile = 3;
+    string nickName = 4;
+    uint64 birthDay = 5;
+    string gender = 6;
+    int32 role = 7;
+}
+
+message UserListResponse {
+    int32 total = 1;
+    repeated UserInfoResponse data = 2;
+}
+```
+
+## 6、 用户列表接口
+
+## 7 、通过id和mobile查询用户
+
+## 8 、新建用户
+
+## 9 、修改用户和校验密码接口
+
+## 10、 通过flag启动grpc服务
+
+Goland 启动参数配置
+
+![1](img/1.PNG)
+
+命令行运行： main.exe  -port 8888
+
+查看参数命令： main.ext -h
