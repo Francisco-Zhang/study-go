@@ -7,9 +7,11 @@ import (
 )
 
 func main() {
+	port := 8021
+	
 	//1. 初始化logger
 	initialize.InitLogger()
-	port := 8021
+	
 	//初始化routers
 	Router := initialize.Routers()
 	//使用全局的log,缩短代码
