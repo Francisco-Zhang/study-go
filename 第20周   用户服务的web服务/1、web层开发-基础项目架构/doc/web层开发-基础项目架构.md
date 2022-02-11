@@ -103,3 +103,7 @@ zap.ReplaceGlobals(logger)
 port := 8021
 zap.S().Infof("启动服务器,端口：%d", port) //这种写法可以缩短代码长度。
 ```
+
+## 6 、gin调用grpc服务-1
+
+## 7 、gin调用grpc服务-2
