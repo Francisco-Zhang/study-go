@@ -117,3 +117,33 @@ key 随机生成 网址：https://suijimimashengcheng.bmcx.com/
 
 
 ## 7、 给url添加登录权限验证
+
+```go
+func InitUserRouter(Router *gin.RouterGroup) {
+    //如果是user这一组url都加权限，则是 Router.Group("user").Use(middlewares.JWTAuth())
+	UserRouter := Router.Group("user")
+	zap.S().Info("配置用户相关的url")
+	{	//单个接口加权限
+		UserRouter.GET("list", middlewares.JWTAuth(),middlewares.IsAdminAuth(), api.GetUserList) 
+		UserRouter.POST("pwd_login", api.PassWordLogin)
+	}
+}
+
+
+func IsAdminAuth() gin.HandlerFunc{
+	return func(ctx *gin.Context){
+		claims, _ := ctx.Get("claims")
+		currentUser := claims.(*models.CustomClaims)
+
+		if currentUser.AuthorityId != 2 {
+			ctx.JSON(http.StatusForbidden, gin.H{
+				"msg":"无权限",
+			})
+			ctx.Abort()
+			return
+		}
+		ctx.Next()
+	}
+}
+```
+
