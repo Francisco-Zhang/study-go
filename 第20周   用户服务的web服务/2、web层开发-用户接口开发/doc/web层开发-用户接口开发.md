@@ -90,3 +90,30 @@ func PassWordLogin(c *gin.Context) {
 }
 ```
 
+## 4、 session机制在微服务下的问题
+
+
+
+### ![2](img/2.PNG)
+
+
+
+微服务数据库隔离，session机制失效，解决办法是 session 放到 redis 中。
+
+jwt,  json web tocken 可以做到不存储 json ，仍然可以验证。
+
+
+
+## 5、 json web token的认证机制
+
+密钥一定不能泄露，密钥是服务端做验证用的，密钥只能是服务器知道。
+
+
+
+## 6、 集成jwt到gin中
+
+key 随机生成 网址：https://suijimimashengcheng.bmcx.com/
+
+
+
+## 7、 给url添加登录权限验证
