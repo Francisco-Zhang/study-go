@@ -147,3 +147,190 @@ func IsAdminAuth() gin.HandlerFunc{
 }
 ```
 
+
+
+## 8、 如何解决前后端的跨域问题
+
+跨域的问题 - 可以后端解决, 也可以前端来解决(比如vue 的proxy)，前端解决本质上是前端自己充当服务端然后转发请求。
+
+### 跨域演示
+
+简单请求，不会出现跨域提示。去掉 dataType、beforeSend就会变成简单请求。
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+</head>
+<body>
+    <button type="button" id="query">请求数据</button>
+    <div id="content" style="background-color: aquamarine; width: 300px;height: 500px"></div>
+</body>
+<script type="text/javascript">
+    $("#query").click(function () {
+        $.ajax(
+            {
+                url:"http://127.0.0.1:8021/u/v1/user/list",
+                dataType: "json",  //去掉才能变成简单请求
+                type: "get",
+                //header中添加数据就属于非简单请求，这样浏览器就会自动发送OPTIONS请求，然后出现权限校验
+                beforeSend: function(request) {
+                  request.setRequestHeader("x-token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6MSwiTmlja05hbWUiOiJib2JieTAiLCJBdXRob3JpdHlJZCI6MSwiZXhwIjoxNjQ3MjQ5ODI4LCJpc3MiOiJpbW9vYyIsIm5iZiI6MTY0NDY1NzgyOH0.b58yDz3o3WaoF4Dff0FaZyU4MqbEQrya4nnKsmU4-qU")
+                },
+                success: function (result) {
+                    console.log(result.data);
+                    $("#content").text(result.data)
+                },
+                error: function (data) {
+                    alert("请求出错")
+                }
+            }
+        );
+    });
+</script>
+</html>
+```
+
+服务端跨域提示：
+
+本地浏览器打开html，点击按钮，出现跨域请求。
+
+```http
+request URL: http://127.0.0.1:8021/u/v1/user/list
+Referrer Policy: strict-origin-when-cross-origin
+```
+
+
+
+### 什么情况下会发送 OPTIONS 请求?
+
+当一个请求跨域且不是简单请求时就会发送 OPTIONS 请求
+
+这里要注意两个问题：
+
+1. 请求跨域
+
+- 一般常见形式是 CORS 跨域；
+- nginx 代理转发对浏览器而言没有跨域；
+
+2. 简单请求：满足下列条件的请求可以视为简单请求
+
+- 使用下列方法之一：
+  GET
+  HEAD
+  POST
+
+- Content-Type 的值仅限于下列三者之一：
+  text/plain
+  multipart/form-data
+  application/x-www-form-urlencoded
+
+上面的条件，只要有一点不满足就不是简单请求，例如常见的 application/json，或者携带自定义请求头，或请求方法为 PUT、DELETE。
+
+当请求跨域且不是简单请求时，浏览器首先使用 OPTIONS 方法发起一个预检请求到服务器，以获知服务器是否允许该实际请求。"预检请求“的使用，可以避免跨域请求对服务器的用户数据产生未预期的影响。
+
+
+### 添加OPTIONS请求处理中间件
+
+cors.go
+
+```go
+func Cors() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+
+		c.Header("Access-Control-Allow-Origin", "*")
+		//允许请求头 携带 x-token
+		c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token, Authorization, Token, x-token")
+		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PATCH, PUT")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Content-Type")
+		c.Header("Access-Control-Allow-Credentials", "true")
+
+		if method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+		}
+	}
+}
+```
+
+router.go
+
+```go
+
+func Routers() *gin.Engine {
+	Router := gin.Default()
+	//配置跨域
+	Router.Use(middlewares.Cors())
+	//生成全局所有分组的顶层分组
+	ApiGroup := Router.Group("/u/v1")
+	router2.InitUserRouter(ApiGroup)
+
+	return Router
+}
+```
+
+
+
+## 9、 获取图片验证码
+
+第三方库：https://mojotv.cn/go/refactor-base64-captcha
+
+chaptcha.go
+
+```go
+
+var store = base64Captcha.DefaultMemStore
+
+
+func GetCaptcha(ctx *gin.Context){
+	driver := base64Captcha.NewDriverDigit(80, 240, 5, 0.7, 80)
+	cp := base64Captcha.NewCaptcha(driver, store)
+	id, b64s, err := cp.Generate()
+	if err != nil {
+		zap.S().Errorf("生成验证码错误,: ", err.Error())
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"msg":"生成验证码错误",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"captchaId": id,
+		"picPath": b64s,
+	})
+}
+```
+
+base.go
+
+```go
+func InitBaseRouter(Router *gin.RouterGroup) {
+	BaseRouter := Router.Group("base")
+	{
+		BaseRouter.GET("captcha", api.GetCaptcha)
+	}
+}
+```
+
+router.go
+
+```go
+ApiGroup := Router.Group("/u/v1")
+router.InitUserRouter(ApiGroup)
+router.InitBaseRouter(ApiGroup)
+```
+
+user.go
+
+```go
+//同一个包的变量可以直接访问
+if !store.Verify(passwordLoginForm.CaptchaId, passwordLoginForm.Captcha, false) {
+    c.JSON(http.StatusBadRequest, gin.H{
+        "captcha": "验证码错误",
+    })
+    return
+}
+```
+
