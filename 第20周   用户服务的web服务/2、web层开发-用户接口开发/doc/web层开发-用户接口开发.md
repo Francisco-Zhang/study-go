@@ -31,3 +31,62 @@ if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 }
 ```
 
+## 3 、登录逻辑完善
+
+```go
+func PassWordLogin(c *gin.Context) {
+	//表单验证
+	passwordLoginForm := forms.PassWordLoginForm{}
+	if err := c.ShouldBind(&passwordLoginForm); err != nil {
+		HandleValidatorError(c, err)
+		return
+	}
+	//拨号连接用户grpc服务器
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", global.ServerConfig.UserSrvInfo.Host, global.ServerConfig.UserSrvInfo.Port), grpc.WithInsecure())
+	if err != nil {
+		zap.S().Errorw("[GetUserList] 连接 【用户服务】失败",
+			"msg", err.Error())
+	}
+	//登录的逻辑
+	userSrvClient := proto.NewUserClient(conn)
+	if rsp, err := userSrvClient.GetUserByMobile(context.Background(), &proto.MobileRequest{
+		Mobile: passwordLoginForm.Mobile,
+	}); err != nil {
+		if e, ok := status.FromError(err); ok {
+			switch e.Code() {
+			case codes.NotFound:
+				c.JSON(http.StatusBadRequest, map[string]string{
+					"mobile": "用户不存在",
+				})
+			default:
+				c.JSON(http.StatusInternalServerError, map[string]string{
+					"mobile": "登录失败",
+				})
+			}
+			return
+		}
+	} else {
+		//只是查询到用户了而已，并没有检查密码
+		if passRsp, pasErr := userSrvClient.CheckPassWord(context.Background(), &proto.PasswordCheckInfo{
+			Password:          passwordLoginForm.PassWord,
+			EncryptedPassword: rsp.PassWord,
+		}); pasErr != nil {
+			c.JSON(http.StatusInternalServerError, map[string]string{
+				"password": "登录失败",
+			})
+		} else {
+			if passRsp.Success {
+				c.JSON(http.StatusOK, map[string]string{
+					"msg": "登录成功",
+				})
+			} else {
+				c.JSON(http.StatusBadRequest, map[string]string{
+					"msg": "登录失败",
+				})
+			}
+
+		}
+	}
+}
+```
+
