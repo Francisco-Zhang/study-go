@@ -192,3 +192,76 @@ grpc健康检查重要点:
 ### go配置grpc的健康检查
 
 grpc内部已经实现了健康检查的方法，我们只需要将服务进行注册就可以生效。
+
+```protobuf
+syntax = "proto3";
+
+package grpc.health.v1;
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;  // Used only by the Watch method.
+  }
+  ServingStatus status = 1;
+}
+
+service Health {
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+
+  rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse);
+}
+```
+
+main.go
+
+```go
+//注册服务健康检查
+grpc_health_v1.RegisterHealthServer(server, health.NewServer())
+```
+
+
+
+## 7、 将grpc服务注册到consul中
+
+```go
+//服务注册
+	cfg := api.DefaultConfig()
+	cfg.Address = fmt.Sprintf("%s:%d", global.ServerConfig.ConsulInfo.Host,
+		global.ServerConfig.ConsulInfo.Port)
+
+	client, err := api.NewClient(cfg)
+	if err != nil {
+		panic(err)
+	}
+	//生成对应的检查对象,第一个参数注明 CGRC 类型
+	check := &api.AgentServiceCheck{
+		GRPC:                           fmt.Sprintf("192.168.0.105:%d", *Port),
+		Timeout:                        "5s",
+		Interval:                       "5s",
+		DeregisterCriticalServiceAfter: "15s",
+	}
+
+	//生成注册对象
+	registration := new(api.AgentServiceRegistration)
+	registration.Name = global.ServerConfig.Name
+	serviceID := fmt.Sprintf("%s", uuid.NewV4())
+	registration.ID = serviceID
+	registration.Port = *Port
+	registration.Tags = []string{"imooc", "bobby", "user", "srv"}
+	registration.Address = "192.168.0.103"
+	registration.Check = check
+	//1. 如何启动两个服务
+	//2. 即使我能够通过终端启动两个服务，但是注册到consul中的时候也会被覆盖
+	err = client.Agent().ServiceRegister(registration)
+	if err != nil {
+		panic(err)
+	}
+```
+
