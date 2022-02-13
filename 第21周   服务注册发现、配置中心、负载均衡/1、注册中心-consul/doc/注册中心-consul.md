@@ -47,3 +47,114 @@ dns 提供通过域名查询 ip、端口号 的功能。比如网关 gateway 可
 
 
 ![1](img/1.PNG)
+
+
+
+## 3、 服务注册和注销
+
+1.  添加服务
+
+    https://www.consul.io/api-docs/agent/service#register-service
+
+   ```shell
+   PUT http://192.168.0.251:8500/v1/agent/service/register  #注意有个版本号v1
+   ```
+
+2. 删除服务 https://www.consul.io/api-docs/agent/service#deregister-service
+
+3. 设置健康检查  https://www.consul.io/api-docs/agent/check
+
+   在添加服务的时候就可以设置健康检查参数
+
+4. 同一个服务注册多个实例
+
+5. 获取服务  https://www.consul.io/api-docs/agent/service#list-services
+
+ 
+
+## 4、 go集成consul
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/hashicorp/consul/api"
+)
+
+func Register(address string, port int, name string, tags []string, id string) error {
+	cfg := api.DefaultConfig()
+	cfg.Address = "192.168.1.103:8500"
+
+	client, err := api.NewClient(cfg)
+	if err != nil {
+		panic(err)
+	}
+	//生成对应的检查对象
+	check := &api.AgentServiceCheck{
+		HTTP:                           "http://192.168.1.102:8021/health",
+		Timeout:                        "5s",
+		Interval:                       "5s",
+		DeregisterCriticalServiceAfter: "10s",
+	}
+
+	//生成注册对象
+	registration := new(api.AgentServiceRegistration)
+	registration.Name = name
+	registration.ID = id
+	registration.Port = port
+	registration.Tags = tags
+	registration.Address = address
+	registration.Check = check
+
+	err = client.Agent().ServiceRegister(registration)
+	//client.Agent().ServiceDeregister()
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func AllServices() {
+	cfg := api.DefaultConfig()
+	cfg.Address = "192.168.1.103:8500"
+
+	client, err := api.NewClient(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	data, err := client.Agent().Services()
+	if err != nil {
+		panic(err)
+	}
+	for key, _ := range data {
+		fmt.Println(key)
+	}
+}
+func FilterSerivice() {
+	cfg := api.DefaultConfig()
+	cfg.Address = "192.168.1.103:8500"
+
+	client, err := api.NewClient(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	data, err := client.Agent().ServicesWithFilter(`Service == "user-web"`)
+	if err != nil {
+		panic(err)
+	}
+	for key, _ := range data {
+		fmt.Println(key)
+	}
+}
+
+func main() {
+	//_ = Register("192.168.1.102", 8021, "user-web", []string{"mxshop", "bobby"}, "user-web")
+	//AllServices()
+	//FilterSerivice()
+	fmt.Println(fmt.Sprintf(`Service == "%s"`, "user-srv"))
+}
+```
+
