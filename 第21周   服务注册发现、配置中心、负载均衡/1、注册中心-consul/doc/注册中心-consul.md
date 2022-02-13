@@ -158,4 +158,37 @@ func main() {
 }
 ```
 
-5、 为grpc服务添加viper和zap
+## 5、 为grpc服务添加viper和zap
+
+## 6、 grpc服务如何进行健康检查？
+
+###  grpc的健康检查规范
+
+https://github.com/grpc/grpc/blob/master/doc/health-checking.md
+
+### python配置grpc健康检查
+
+grpc健康检查重要点:
+
+1. check = {
+
+​    **"GRPC"**: **f'****{**ip**}****:****{**port**}****'**,
+
+​    **"GRPCUseTLS"**: **False**,
+
+​    **"Timeout"**: **"5s"**,
+
+​    **"Interval"**: **"5s"**,
+
+​    **"DeregisterCriticalServiceAfter"**: **"5s"**,
+
+   }
+
+1. 一定要确保网络是通的
+2. 一定要确保srv服务监听端口是对外可访问的
+
+1. GRPC一定要自己填写
+
+### go配置grpc的健康检查
+
+grpc内部已经实现了健康检查的方法，我们只需要将服务进行注册就可以生效。
