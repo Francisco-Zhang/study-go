@@ -1,0 +1,14 @@
+name: 'user_srv'
+mysql:
+  host: '127.0.0.1'
+  port: 3306
+  user: 'root'
+  password: 'admin123'
+  db: 'mxshop_user_srv'
+consul:
+  host: '192.168.0.251'
+  port: 8500
+
+namespace: '6af9810f-2e08-4e9e-ab52-ae2868fe5fcc'
+dataid: 'user-srv.json'
+group: 'dev'

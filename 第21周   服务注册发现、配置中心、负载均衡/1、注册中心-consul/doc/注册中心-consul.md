@@ -265,3 +265,6 @@ grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 	}
 ```
 
+## 8 、gin集成consul
+
+既要注册服务，又要发现grpc服务。
