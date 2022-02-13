@@ -268,3 +268,7 @@ grpc_health_v1.RegisterHealthServer(server, health.NewServer())
 ## 8 、gin集成consul
 
 既要注册服务，又要发现grpc服务。
+
+
+
+## 9、 将用户的grpc连接配置到全局共用
