@@ -334,3 +334,75 @@ if !store.Verify(passwordLoginForm.CaptchaId, passwordLoginForm.Captcha, false) 
 }
 ```
 
+
+
+## 10、 阿里云发送短信
+
+### 代码
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/dysmsapi"
+)
+
+func main(){
+	client, err := dysmsapi.NewClientWithAccessKey("cn-beijing", "xxxx", "xxx")
+	if err != nil {
+		panic(err)
+	}
+	request := requests.NewCommonRequest()
+	request.Method = "POST"
+	request.Scheme = "https" // https | http
+	request.Domain = "dysmsapi.aliyuncs.com"
+	request.Version = "2017-05-25"
+	request.ApiName = "SendSms"
+	request.QueryParams["RegionId"] = "cn-beijing"
+	request.QueryParams["PhoneNumbers"] = "xxx"                         //手机号
+	request.QueryParams["SignName"] = "xxx"                               //阿里云验证过的项目名 自己设置
+	request.QueryParams["TemplateCode"] = "xxx"       //阿里云的短信模板号 自己设置
+	request.QueryParams["TemplateParam"] = "{\"code\":" + "777777" + "}" //短信模板中的验证码内容 自己生成   之前试过直接返回，但是失败，加上code成功。
+	response, err := client.ProcessCommonRequest(request)
+	fmt.Print( client.DoAction(request, response))
+	//  fmt.Print(response)
+	if err != nil {
+		fmt.Print(err.Error())
+	}
+	fmt.Printf("response is %#v\n", response)
+	//json数据解析
+}
+```
+
+### redis的安装
+
+docker 安装
+
+```shell
+docker run -p 6379:6379 -d redis:latest redis-server  
+docker container update --restart=always 容器名字 #设置容器自动启动，比如服务器重启后，容器会退出。设置后自动启动
+```
+
+redis的go驱动
+
+```http
+https://github.com/go-redis/redis
+```
+
+
+
+## 11、 redis保存验证码
+
+```go
+//将验证码保存起来 - redis
+	rdb := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("%s:%d", global.ServerConfig.RedisInfo.Host, global.ServerConfig.RedisInfo.Port),
+	})
+	rdb.Set(context.Background(), sendSmsForm.Mobile, smsCode, time.Duration(global.ServerConfig.RedisInfo.Expire)*time.Second)
+```
+
+
+
+## 12、 用户注册接口
