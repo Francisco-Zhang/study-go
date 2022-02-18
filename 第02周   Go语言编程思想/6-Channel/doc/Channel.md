@@ -258,3 +258,91 @@ func main() {
 }
 ```
 
+
+
+## 3、 使用Channel进行树的遍历
+
+```go
+c := root.TraverseWithChannel()
+	maxNodeValue := 0
+	for node := range c {
+		if node.Value > maxNodeValue {
+			maxNodeValue = node.Value
+		}
+	}
+
+
+func (node *Node) TraverseWithChannel() chan *Node {
+	out := make(chan *Node)
+	go func() {
+		node.TraverseFunc(func(node *Node) {
+			out <- node
+		})
+		close(out)
+	}()
+	return out
+}
+```
+
+
+
+## 4、 Select
+
+非阻塞式的获取数据方法。
+
+底层是使用的IO多路复用技术，可以按顺序的检测channel是否有数据进入，哪个有数据，就执行哪个channel的数据读写操作。
+
+如果都没有数据，就会出现死锁错误，所以必须有default语句在检测不到数据的情况下执行。
+
+```go
+func main() {
+	var c1, c2 chan int
+	//想同时判断 c1,c2而不会被阻塞
+	select {
+	case n := <-c1:
+		fmt.Println("Received from c1", n)
+	case n := <-c2:
+		fmt.Println("Received from c2", n)
+	default:
+		fmt.Println("No Value Received ")
+	}
+}
+```
+
+想要一致监听，就在外面加一个for循环
+
+```go
+func generator() chan int {
+	out := make(chan int)
+	go func() {
+		i := 0
+		for {
+			time.Sleep(
+				time.Duration(rand.Intn(1500)) *
+					time.Millisecond)
+			out <- i
+			i++
+		}
+	}()
+	return out
+}
+
+func main() {
+	var c1, c2 chan int = generator(), generator()
+
+	for {
+		select {
+		case n := <-c1:
+			fmt.Println("Received from c1", n)
+		case n := <-c2:
+			fmt.Println("Received from c2", n)
+		}
+	}
+}
+```
+
+
+
+
+
+6min
