@@ -62,3 +62,15 @@ Elasticsearch是一个基于Apache Lucene(TM)的开源的高扩展的分布式�
 
 
 ## 2、 安装elasticsearch和kibana
+
+### 关闭防火墙
+
+```sh
+#禁用防火墙
+systemctl stop firewalld.service
+#停止并禁用开机启动 
+sytemctl disable firewalld.service
+#查看防火状态
+systemctl status firewalld.service
+```
+
