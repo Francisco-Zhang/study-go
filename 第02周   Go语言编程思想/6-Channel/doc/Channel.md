@@ -574,3 +574,115 @@ func main() {
 }
 ```
 
+
+
+## 8、 并发任务的控制
+
+### 处理机制
+
+- 非阻塞等待
+- 超时机制
+- 任务中断/退出
+- 优雅退出
+
+
+
+### 非阻塞等待
+
+
+
+```go
+func nonBlockingWait(c chan string) (string, bool) {
+	select {
+	case m := <-c:
+		return m, true
+	default:  //select 中一旦引入了default就变成了非阻塞，会直接执行default。
+		return "", false
+	}
+}
+```
+
+
+
+### 超时机制
+
+
+
+```go
+func timeoutWait(c chan string, timeout time.Duration) (string, bool) {
+	select {
+	case m := <-c:
+		return m, true
+	case <-time.After(timeout):
+		return "", false
+	}
+}
+```
+
+
+
+### 任务中断/退出
+
+```go
+func msgGen(name string,done chan struct{}) chan string {  //空的struct更省空间
+	c := make(chan string)
+	go func() {
+		i := 0
+		for {
+            select{
+                case <-time.After(time.Duration(rand.Intn(2000)) * time.Millisecond):
+               		 c <- fmt.Sprintf("service %s: message %d", name, i)
+                case <-done:
+                	 fmt.Println("clean up")
+                	 return
+            }
+			i++
+		}
+	}()
+	return c
+}
+
+func main() {
+    done:=make(chan struct{})
+	m1 := msgGen("service1",done)
+    done<-struct{}{}	//第一个{}定义一个没有字段的struct,第二个{}初始化为空
+    time.Sleep(time.Second)
+}
+
+```
+
+
+
+### 优雅退出
+
+```go
+func msgGen(name string,done chan struct{}) chan string {  //空的struct更省空间
+	c := make(chan string)
+	go func() {
+		i := 0
+		for {
+            select{
+                case <-time.After(time.Duration(rand.Intn(2000)) * time.Millisecond):
+               		 c <- fmt.Sprintf("service %s: message %d", name, i)
+                case <-done:
+                	 fmt.Println("clean up")
+                	 time.Sleep(time.Second)
+                	 fmt.Println("clean done")
+                	 done<-struct{}{}   //双向channel不便于理解，一般不用，这里暂时用下，处理结束后再返回一个数据
+                	 return
+            }
+			i++
+		}
+	}()
+	return c
+}
+
+
+func main() {
+    done:=make(chan struct{})
+	m1 := msgGen("service1",done)
+    done<-struct{}{}	//第一个{}定义一个没有字段的struct,第二个{}初始化为空
+    <-done
+}
+```
+
