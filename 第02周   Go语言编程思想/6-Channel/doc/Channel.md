@@ -422,7 +422,155 @@ for {
 
 
 
+```go
+tm := time.After(10 * time.Second)  //10s后通过return结束程序
+tick := time.Tick(time.Second)    //每隔1s送出一份数据
+for {
+    var activeWorker chan<- int
+    var activeValue int
+    if len(values) > 0 {
+        activeWorker = worker
+        activeValue = values[0]
+    }
+
+    select {
+        case n := <-c1:
+        	values = append(values, n)
+        case n := <-c2:
+        	values = append(values, n)
+        case activeWorker <- activeValue:
+        	values = values[1:]
+        case <-time.After(800 * time.Millisecond): //800ms的时间内没有生出数据
+			fmt.Println("timeout")
+        case <-tick:
+			fmt.Println("queue len =", len(values))
+        case <-tm:
+        	fmt.Println("bye")
+        return
+    }
+}
+```
 
 
-15min
+
+## 5、 传统同步机制
+
+传统的同步模型要少用，Go语言习惯用CSA通讯模型，通过channel达到同步，而不是用锁。
+
+- WaitGroup
+- Mutex
+- Cond
+
+
+
+如果变量有读写冲突等非安全的使用， 使用go -race 命令可以检测出来，会有提示信息。
+
+
+
+```go
+type atomicInt struct {
+	value int
+	lock  sync.Mutex
+}
+
+func (a *atomicInt) increment() {
+	fmt.Println("safe increment")
+	func() {  //通过匿名函数来对一块代码区域进行保护。
+		a.lock.Lock()
+		defer a.lock.Unlock()
+
+		a.value++
+	}()
+}
+
+func (a *atomicInt) get() int {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	return a.value
+}
+
+func main() {
+	var a atomicInt
+	a.increment()
+	go func() {
+		a.increment()
+	}()
+	time.Sleep(time.Millisecond)
+	fmt.Println(a.get())
+}
+```
+
+
+
+## 6、 并发模式（上）
+
+## 7、 并发模式（下）
+
+
+
+
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+func msgGen(name string) chan string {
+	c := make(chan string)
+	go func() {
+		i := 0
+		for {
+			time.Sleep(time.Duration(rand.Intn(2000)) * time.Millisecond)
+			c <- fmt.Sprintf("service %s: message %d", name, i)
+			i++
+		}
+	}()
+	return c
+}
+
+func fanIn(chs ...chan string) chan string {
+	c := make(chan string)
+	for _, ch := range chs {
+		go func(in chan string) {  //要防止ch在循环中被覆盖，所以需要使用参数传入，而不能直接使用。
+			for {
+				c <- <-in
+			}
+		}(ch)
+	}
+	return c
+}
+
+//fanIn的另一种写法，这种方式可以减少goroutine使用，但是必须明确的知道 channel 的个数
+func fanInBySelect(c1, c2 chan string) chan string {
+	c := make(chan string)
+	go func() {
+		for {
+			select {
+			case m := <-c1:
+				c <- m
+			case m := <-c2:
+				c <- m
+			}
+		}
+	}()
+	return c
+}
+
+func main() {
+	m1 := msgGen("service1")
+	m2 := msgGen("service2")
+	m3 := msgGen("service3")
+    //将多个channel集中到一个，可以防止从多个channel取数据。
+    //使用场景是多个任务，哪个任务先执行完就处理哪个任务的返回结果
+	m := fanIn(m1, m2, m3) 
+	for {
+		fmt.Println(<-m)
+	}
+}
+```
 
