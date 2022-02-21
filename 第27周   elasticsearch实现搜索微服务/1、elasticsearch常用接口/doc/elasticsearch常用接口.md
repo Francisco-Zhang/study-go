@@ -1,4 +1,4 @@
-## 1、 我们为什么要用elasticsearch进行搜索
+## 映射（mapping）1、 我们为什么要用elasticsearch进行搜索
 
 ### mysql搜索面临的问题
 
@@ -74,3 +74,144 @@ sytemctl disable firewalld.service
 systemctl status firewalld.service
 ```
 
+### 使用docker安装elasticsearch
+
+使用docker就不需要配置jvm的运行环境了
+
+```shell
+#新建es的config配置文件夹
+mkdir -p /data/elasticsearch/config
+#新建es的data目录
+mkdir -p /data/elasticsearch/data
+#给目录设置权限
+chmod 777 -R /data/elasticsearch
+
+echo "http.host:0.0.0.0" >> /data/elasticsearch/config/elasticsearch.yml
+
+
+docker run --name elasticsearch   -p 9200:9200 -p 9300:9300
+-e "discovery.type=single-node"
+-e  ES_JAVA_OPTS="-Xms128m -Xmx256m" 
+-v /data/elasticsearch/config/elasticsearch.yml :/usr/share/elasticsearch/config/elasticsearch.yml
+-v /data/elasticsearch/data:/usr/share/elasticsearch/data 
+-v /data/elasticsearch/plugins:/usr/share/elasticsearch/plugins
+-d elasticsearch:7.10.1
+```
+
+访问 http://192.168.0.104:9200 有json数据返回，说明启动成功了。
+
+
+
+### 通过docker安装kibana
+
+es相当于mysql ,kibana相当于navicate
+
+```shell
+docker run -d --name kibana -e ELASTICSEARCH_HOST="http://192.168.0.104:9200"  -p 5601:5601  kibana:7.10.1
+```
+
+访问 http://192.168.0.104:5601 能看到后台页面说明 kibana启动成功了。
+
+Home/Dev tools  在Console 可以写 es 的查询命令。
+
+
+
+## 3、 elasticsearch中的基本概念
+
+### es中的type、index、mapping 和 dsl
+
+| mysql    | elasticsearch                                 |
+| -------- | --------------------------------------------- |
+| database |                                               |
+| table    | index (7.x开始理解为table，type为固定值_doc） |
+| row      | document                                      |
+| column   | field                                         |
+| schema   | 映射（mapping）                               |
+| sql      | DSL（Descriptor Struct Laguage）              |
+
+
+
+### 索引
+
+**有两个含义：动词(insert)，名词(表)**，插入一条数据，我们一般说 ”索引一条数据“。
+
+Elasticsearch将它的数据存储在一个或多个索引（index）中。索引就像数据库，可以向索引写入文档或者从索引中读取文档。
+
+
+
+## 4、 通过put和post方法添加数据
+
+### 查看索引
+
+kibana 控制台：GET  _cat/indice
+
+Postman: 		  ` http://192.168.0.104:9200/_cat/indice `
+
+### 通过PUT+id新建数据
+
+保存id 为1 的数据，新版本固定为_doc，之前为type。
+
+PUT请求，不存在的话新建，存在的话更新，返回 "result" : "update"
+
+```http
+PUT account/_doc/1 
+{
+  "name": "test1",
+  "age": 12,
+  "company": {
+  		"name":"aaaa",
+  		"address":"beijing"
+  },
+  "tags": ["aa", "bb", "cc"]
+}
+返回结果
+{
+  "_index" : "customer",
+  "_type" : "_doc",
+  "_id" : "1",
+  "_version" : 1,
+  "result" : "created",
+  "_shards" : {   //分片信息
+    "total" : 2,
+    "successful" : 1,
+    "failed" : 0
+  },
+  "_seq_no" : 0,   //乐观锁
+  "_primary_term" : 1
+}
+```
+
+### POST不带id新建数据
+
+```http
+POST /user/_doc
+{
+  "name": "John Doe"
+}
+
+POST /user/_doc/1
+{
+  "name": "John Doe"
+}
+```
+
+post不带id,每请求一次，新建一次数据
+
+post带id,就和put是一样的操作，put是不允许不带id的。
+
+
+
+### post + _create
+
+没有就创建，有就报错
+
+```http
+POST /user/_create/1
+{
+  "name": "John Doe"
+}
+```
+
+### 查看某个索引的基本信息
+
+GET  /account
