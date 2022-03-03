@@ -1,5 +1,3 @@
-
-
 ## 1、集群的配置及版本
 
 ### 简介
@@ -14,8 +12,6 @@ kind用于本机进行k8s集群练习，k8s的版本由云厂商决定。![1](im
 
 ![2](img/2.png)
 
-
-
 ## 2、kubectl的安装
 
 https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/    kubectl 安装包文档说明页面。
@@ -23,8 +19,6 @@ https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/    kubectl 安�
 下载：https://dl.k8s.io/release/v1.18.0/bin/windows/amd64/kubectl.exe      版本号可以修改。
 
 然后将可执行文件目录添加PATH目录。
-
-
 
 ## 3、用kind来配置本地集群
 
@@ -61,7 +55,7 @@ kind create cluster
 
 查看集群信息命令：kubectl  cluster-info  --context kind-kind  或者 没有context,直接使用  kubectl  cluster-info
 
-查看版本命令：	kubectl   version
+查看版本命令：    kubectl   version
 
 腾讯云 k8s集群访问
 
@@ -73,23 +67,15 @@ kind create cluster
 
 4、 export KUBECONFIG = ~/Downloads/qcloud-coolcar-config  
 
-​		windows 用 set %KUBECONFIG%=~/Downloads/qcloud-coolcar-config  
-
-
+​        windows 用 set %KUBECONFIG%=~/Downloads/qcloud-coolcar-config  
 
 vscode 插件管理：添加config，可以查看k8s信息
 
 ![5](img/5.png)
 
-
-
-
-
 查看 kind 集群
 
 kind get kubeconfig  将内容保存到文件，然后使用插件访问。
-
-
 
 设置环境变量后，kubctl访问腾讯云
 
@@ -139,7 +125,7 @@ yaml配置文件一般拷贝修改，很少手写。
 
 启动容器：kubectl apply -f nginx/nginx-deployment.yaml
 
-查看:		  kubectl get pods				 查看指定命名空间：kubectl get pods  -n  kube-system
+查看:          kubectl get pods                 查看指定命名空间：kubectl get pods  -n  kube-system
 
 ### 架构
 
@@ -149,17 +135,11 @@ CRI:容器运行接口
 
 ![6](img/6.png)
 
-
-
 ![7](img/7.png)
-
-
 
 k8s只是操作抽象的接口，需要的只是一个镜像，镜像是由Docker制作还是其他工具制作并不关心。所以Docker弃用并不影响K8s。
 
 我们制作镜像的时候可以使用Docker制作，具体运行的时候容器是docker还是containerd，开发者不需要关心。
-
-
 
 ### 工作负载
 
@@ -183,8 +163,6 @@ curl localhost
 节点就是真实的物理机，可以向集群中添加节点。
 
 ![9](img/9.png)
-
-
 
 ## 7、服务与网络
 
@@ -214,9 +192,8 @@ curl nginx-service
 
 ![10](img/10.png)
 
-
-
 腾讯云弹性集群，是按使用时间计费的，使用完之后将Pod删除，以免产生费用
 
-命令： 	kubectl delete deployment --all
+命令：     kubectl delete deployment --all
+
 
