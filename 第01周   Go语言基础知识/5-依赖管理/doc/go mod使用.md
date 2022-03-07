@@ -51,3 +51,5 @@ go get -u go.uber.org/zap@v1.11
 ### go build
 
 使用 go build ./...   命令会自动对项目下所有文件进行编译，可以借助该命令 完成项目所有文件 import 包的自动安装。
+
+实际项目使用中  go get ./... 可以安装依赖
