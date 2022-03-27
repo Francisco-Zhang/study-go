@@ -25,10 +25,12 @@ https://zhuanlan.zhihu.com/p/73997266
 
 **CategoryID 和 BrandsID构成 唯一联合索引，防止插入重复数据。**
 
+采用自己定义一张表，而不是gorm帮我们生成的方式。
+
 ```go
 type GoodsCategoryBrand struct {
 	BaseModel
-	CategoryID int32 `gorm:"type:int;index:idx_category_brand,unique"`
+	CategoryID int32 `gorm:"type:int;index:idx_category_brand,unique"` //如果不写int32，容易被对应成bigint类型。
 	Category   Category
 
 	BrandsID int32 `gorm:"type:int;index:idx_category_brand,unique"`
@@ -37,6 +39,41 @@ type GoodsCategoryBrand struct {
 
 func (GoodsCategoryBrand) TableName() string {	//自定义表名
 	return "goodscategorybrand"
+}
+
+type Banner struct {
+	BaseModel
+	Image string `gorm:"type:varchar(200);not null"`
+	Url string `gorm:"type:varchar(200);not null"`
+	Index int32 `gorm:"type:int;default:1;not null"`
+}
+```
+
+## 5、 商品表结构设计
+
+自定义数据类型
+
+```go
+type GormList []string
+
+func (g GormList) Value() (driver.Value, error){
+	return json.Marshal(g)
+}
+
+// 实现 sql.Scanner 接口，Scan 将 value 扫描至 Jsonb
+func (g *GormList) Scan(value interface{}) error {
+	return json.Unmarshal(value.([]byte), &g)
+}
+
+type Goods struct {
+	BaseModel
+	.
+  .
+  .
+  //因为很少会根据图片的id查询商品，所以放弃使用关联表的做法，采用自定义类型。
+	Images GormList `gorm:"type:varchar(1000);not null"`  
+	DescImages GormList `gorm:"type:varchar(1000);not null"`
+	GoodsFrontImage string `gorm:"type:varchar(200);not null"`
 }
 ```
 
