@@ -35,7 +35,7 @@ Page({
     },
 
     onLoad() {
-        console.log("lifecycle: index onLaunch");
+        console.log("lifecycle: index onLoad");
         if (wx.getUserProfile) {
             this.setData({
                 canIUseGetUserProfile: true
