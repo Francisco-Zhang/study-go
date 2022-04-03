@@ -92,7 +92,7 @@ protoc-gen-go是protobuf**编译插件**系列中的Go版本。从上一小节�
 
 
 
-由于protoc-gen-go是Go写的，所以安装它变得很简单，只需要运行 `go get -u github.com/golang/protobuf/protoc-gen-go`，便可以在$GOPATH/bin目录下发现这个工具。
+由于protoc-gen-go是Go写的，所以安装它变得很简单，只需要运行 `go get -u github.com/golang/protobuf/protoc-gen-go`，便可以在$GOPATH/bin目录下发现这个工具。最新的安装命令修改为了 go install pkg@latest
 
 ```shell
 protoc --go_out=output_directory input_directory/file.proto
