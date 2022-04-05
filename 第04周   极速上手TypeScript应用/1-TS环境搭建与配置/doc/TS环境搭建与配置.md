@@ -52,3 +52,32 @@ Version 4.6.3
 
 1. 相比起之前 Typescript 项目中会同时存在 ts 文件和 js 文件，新的模板只需要创建 ts 文件即可，无需再生成同名的 js 文件。
 2. 新的模板无需在每次编译前执行 npm run tsc 命令。
+
+
+
+## 3、 typescript小程序代码的生成
+
+有时候错误信息一闪而过，需要我们**勾选 console 设置里的 Preserve log** 选项。但是这种方式不会每次编译自动清除log,所以一般情况下不勾选。
+
+在老版本的微信开发者工具，运行自定义命令 npm run tsc,实际上是运行的配置文件里的tsc所配置的命令
+
+![2](img/2.png)
+
+
+
+tsc.js 会根据tsconfig.json配置文件的选项进行编译。在配置文件中，exclude 选项排除了对第三方依赖进行编译。
+
+在老版本的开发者工具中，会将 tsc.js包下载到 node_modules 目录下，新版本的开发者工具中因为内置了tsc，所以不会在将typescript库下载到node_modules目录里了。
+
+
+
+## 4、gitignore的配置
+
+在 .ignore 中添加配置  
+
+```properties
+wx/miniprogram/**/*.js
+node_modules
+```
+
+这样在第一次下载项目代码后，需要 npm install 安装依赖包。
