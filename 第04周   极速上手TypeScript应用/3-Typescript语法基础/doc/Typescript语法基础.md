@@ -169,3 +169,50 @@ console.log(sum)
 ```
 
 ## 4、 枚举类型
+
+枚举类型是 typescript 特有的，js不包含该类型。
+
+literal type 类型变量定义后，其他变量也想使用该类型，只能重新定义，没法复用，所以有了枚举类型
+
+```typescript
+enum httpStatus{
+  OK,
+  NOT_FOUND,
+  INTERNAL_SERVER_ERROR,
+}
+
+function processHttpstatus(s:httpStatus){
+  //s=100，枚举类型就是 number 类型，也可以直接赋值 数字
+  console.log(s)
+}
+
+processHttpstatus(httpStatus.NOT_FOUND) //输出 1，枚举类型就是 number 类型，默认值为枚举的index
+```
+
+我们也可以自定义枚举值
+
+```typescript
+enum httpStatus{
+  OK =200,   //也可以是字符串，比如 OK = 'ok'
+  NOT_FOUND = 404,
+  INTERNAL_SERVER_ERROR = 500,
+}
+```
+
+知道值 500，怎么能知道是枚举的哪个变量呢。
+
+```typescript
+enum httpStatus{
+  OK,
+  NOT_FOUND,
+  INTERNAL_SERVER_ERROR,
+}
+
+function processHttpstatus(s:httpStatus){
+  console.log(httpStatus[s])
+}
+
+processHttpstatus(httpStatus.NOT_FOUND)  //打印的就是 INTERNAL_SERVER_ERROR 这个字符串
+```
+
+实际运用场景中，使用 枚举类型 还是 literal type，就看哪种方式代码量少，哪种少用哪种。枚举类型复用性更好，只需定义一次。
