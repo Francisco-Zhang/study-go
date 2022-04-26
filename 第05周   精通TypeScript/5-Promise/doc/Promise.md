@@ -77,6 +77,102 @@ add(2,3,res => {
 })
 ```
 
+### 使用Promise改造
+
+```typescript
+function add(a:number,b:number): Promise<number>{
+  return new Promise((resolve,reject)=>{
+    setTimeout(() =>{
+    resolve(a+b)
+    },2000)
+  })
+}
+
+add(2,3).then(res=>{
+    console.log('2+3',res)
+  //如果不返回 promise 对象，则 resolve 函数会执行所有的then，参数为 undefined,否则交由下一个promise处理所有的then。
+  //一定要写 return，then 才会链式执行
+    return add(res,4)  
+  }).then(res=>{
+    console.log('2+3+4',res)
+    return add(res,6)
+  }).then(res=>{
+    console.log('2+3+4+6',res)
+  })
+
+//不打log的写法
+add(2,3)
+.then(res=>add(res,4))
+.then(res=>add(res,6))
+.then(res=>{
+  	console.log('final result is',res)
+})
+```
+
+### 异常处理
+
+```typescript
+function add(a:number,b:number): Promise<number>{
+  return new Promise((resolve,reject)=>{
+    if(b % 17 ===0 ){
+        reject(`bad number ${b}`)
+    }
+    setTimeout(() =>{
+    resolve(a+b)
+    },2000)
+  })
+}
+
+add(2,17).then(res=>{
+  console.log('2+17',res)
+  return add(res,4) 
+}).then(res=>{
+  console.log('2+3+4',res)
+  return add(res,6)
+}).then(res=>{
+  console.log('2+3+4+6',res)
+}).catch(err =>{  //任意一步出错，都会到这里，但是只能执行到一次
+  console.log('caught error',err)
+})
+```
+
+### (2+3)*4+5
+
+```typescript
+function add(a:number,b:number): Promise<number>{
+  return new Promise((resolve,reject)=>{
+    if(b % 17 ===0 ){
+        reject(`bad number ${b}`)
+    }
+    setTimeout(() =>{
+    resolve(a+b)
+    },2000)
+  })
+}
+
+function mul(a:number,b:number): Promise<number>{
+  return new Promise((resolve,reject)=>{
+    setTimeout(() =>{
+    resolve(a*b)
+    },3000)
+  })
+}
+
+//(2+3)*4+5
+add(2,3).then(res=>{
+    console.log('2+3',res)
+    return mul(res,4)
+  }).then(res=>{
+    console.log('(2+3)*4',res)
+    return add(res,5)
+  }).then(res=>{
+    console.log('(2+3)*4+5',res)  //最后一步，没有then要执行了，就不用return了。
+  }).catch(err =>{
+    console.log('caught error',err)
+  })
+```
 
 
-5 min
+
+## 3、 同时等待多个Promise
+
