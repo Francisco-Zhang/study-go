@@ -176,3 +176,21 @@ add(2,3).then(res=>{
 
 ## 3、 同时等待多个Promise
 
+```typescript
+//(2+3)*(4+5)
+//等两个Promise都返回结果再执行下一步操作，实际场景中经常多个接口并行
+// then(res=>{}) 可以直接替换成 then(([a,b])=>{})
+Promise.all([add(2,3),add(4,5)]).then(res=>{
+  const [a,b] = res
+  console.log('result ',a,b)
+  return mul(a,b)
+}).then(res=>{
+  console.log('(2+3)*(4+5)',res)
+})
+
+//两个中任意一个返回，则执行then
+Promise.race([add(2,3),add(4,5)]).then(res=>{
+  console.log(res)
+})
+```
+
