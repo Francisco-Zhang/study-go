@@ -33,7 +33,6 @@ wx.getSetting({
     }
   }
 })
-},
 ```
 
 ## 2、 Promise的创建和使用
@@ -108,6 +107,25 @@ add(2,3)
   	console.log('final result is',res)
 })
 ```
+
+### 需要注意的用法
+
+```typescript
+let p = add(2,3)
+p.then(res=>{
+    console.log('2+3',res)
+  }).then(res=>{
+  //需要注意的是，此处会打印 undefined 因为此处接收的 res 为第一个then的返回结果，或第一个 then 返回的Promis的resolve结果。
+    console.log('2222',res)    
+  })
+
+//这种写法适用于微信多个page切换获取用户信息。不必每次切换页面都重新发送请求。可以共用一个global Promise 对象。
+p.then(res=>{
+    console.log('3333',res)
+})
+```
+
+
 
 ### 异常处理
 
@@ -192,5 +210,67 @@ Promise.all([add(2,3),add(4,5)]).then(res=>{
 Promise.race([add(2,3),add(4,5)]).then(res=>{
   console.log(res)
 })
+```
+
+## 4、将小程序API改写成Promise
+
+### 改造前
+
+```typescript
+wx.getSetting({
+  success (res){
+    if (res.authSetting['scope.userInfo']) {
+      // 已经授权，可以直接调用 getUserInfo 获取头像昵称
+      wx.getUserInfo({
+        success: res => {
+          this.globalData.userInfo = userInfo
+        }
+      })
+    }
+  }
+})
+```
+
+
+
+### 改造后
+
+```typescript
+//util.ts 文件
+export function getSetting(): Promise<WechatMiniprogram.GetSettingSuccessCallbackResult> {
+  return new Promise((resolve, reject) => {
+    wx.getSetting({
+      success: resolve,
+      fail: reject,
+    })
+  })
+}
+
+export function getUserInfo(): Promise<WechatMiniprogram.GetUserInfoSuccessCallbackResult> {
+  return new Promise((resolve, reject) => {
+    wx.getUserInfo({
+      success: resolve,
+      fail: reject,
+    })
+  })
+}
+
+//app.ts 文件
+getSetting().then(res => {
+  if (res.authSetting['scope.userInfo']) {
+      return getUserInfo()
+  }
+  return undefined //返回对象不是Promise类型，会直接传给下一个then
+}).then(res => {
+  if(!res){
+    return
+  }
+  this.globalData.userInfo = res.userInfo  //上面已经有if判断，可以不用加问号了， res?.userInfo
+  if (this.userInfoReadyCallback) {
+    this.userInfoReadyCallback(res)
+  }
+
+})
+      
 ```
 
