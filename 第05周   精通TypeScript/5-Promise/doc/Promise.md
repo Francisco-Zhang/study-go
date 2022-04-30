@@ -383,3 +383,147 @@ getApp().globalData.userInfo
 //可以看到 状态是 resolved 或者 pending 等。
 ```
 
+
+
+## 6、无授权情况下获取用户头像
+
+### 出现的问题
+
+```typescript
+App<IAppOption>({
+  globalData: {
+      userInfo:new Promise((resolve,reject)=>{
+        getSetting().then(res => {
+        if (res.authSetting['scope.userInfo']) {
+            return getUserInfo()
+        }
+        return undefined //返回对象不是Promise类型，会直接传给下一个then
+      	}).then(res => {
+        if(!res){
+          return  //没有授权的情况下，没有执行resolve，其他页面没法通过then获取用户信息
+        }
+   			//通知
+        resolve(res)
+      	}).catch(reject) 
+      }),
+  },
+)
+  
+//此时 index 页面会出现“获取头像”的按钮，然后由人手工授权，同意后执行 getUserInfo
+getUserInfo(e: any) {
+  //由于此处 app.globalData.userInfo 已经是Promise类型，所以赋值后改变了类型，重新执行 onload 方法获取用户信息的时候会报错
+  //此时如果能有一个全局的 resolve 函数将用户信息传递出去就可以解决这个问题。 
+  app.globalData.userInfo = e.detail.userInfo  // e 是any类型，所以可以赋值
+  this.setData({
+    userInfo: e.detail.userInfo,
+    hasUserInfo: true
+  })
+}
+
+
+getUserInfo(e: any) {
+  const userInfo:WechatMiniprogram.UserInfo = e.detail.userInfo
+  app.globalData.userInfo = userInfo //自己声明了类型保护，此处编译器能识别出来并报错。 
+  this.setData({
+    userInfo: e.detail.userInfo,
+    hasUserInfo: true
+  })
+}
+```
+
+### 将 resolve 函数保存到全局变量
+
+这样其他页面就能调用 resolve 函数。 
+
+```typescript
+new Promise((a:number,reject)=>{})  //如果是一个number类型，外界想要读取，可以保存到全局变量，同样的道理函数也可以
+
+//app.ts
+export let resolveUserInfo: (value: WechatMiniprogram.UserInfo) => void
+export let rejectUserInfo: (reason?: any) => void
+
+App<IAppOption>({
+  globalData: {
+      userInfo:new Promise((resolve,reject)=>{
+        resolveUserInfo = resolve
+        rejectUserInfo = reject
+      }),
+  },
+  
+  onLaunch() {
+    getSetting().then(res => {
+        if (res.authSetting['scope.userInfo']) {
+            return getUserInfo()
+        }
+        return undefined //返回对象不是Promise类型，会直接传给下一个then
+      	}).then(res => {
+        if(!res){
+          return  //没有授权的情况下，没有执行resolve，其他页面没法通过then获取用户信息
+        }
+   			//通知
+        resolveUserInfo(res)
+      	}).catch(rejectUserInfo) 
+  }
+)
+```
+
+### 不希望通过 export 暴露
+
+```typescript
+//"./types/index.d.ts"
+
+interface IAppOption {
+  globalData: {
+    userInfo: Promise<WechatMiniprogram.UserInfo> ,
+  }
+  resolveUserInfo: (userInfo: WechatMiniprogram.UserInfo) => void
+  rejectUserInfo: (reason?: any) => void
+}
+
+
+//app.ts
+let resolveUserInfo: (value: WechatMiniprogram.UserInfo) => void
+let rejectUserInfo: (reason?: any) => void
+
+App<IAppOption>({
+  globalData: {
+      userInfo:new Promise((resolve,reject)=>{
+        resolveUserInfo = resolve
+        rejectUserInfo = reject
+      }),
+  },
+  onLaunch() {
+    getSetting().then(res => {
+        if (res.authSetting['scope.userInfo']) {
+            return getUserInfo()
+        }
+        return undefined //返回对象不是Promise类型，会直接传给下一个then
+      	}).then(res => {
+        if(!res){
+          return  //没有授权的情况下，没有执行resolve，其他页面没法通过then获取用户信息
+        }
+   			//通知
+        resolveUserInfo(res)
+      	}).catch(rejectUserInfo) 
+  },
+  resolveUserInfo(userInfo: WechatMiniprogram.UserInfo){
+    //此处重名不影响，只有使用 this.resolveUserInfo 才代表外面的函数。
+    resolveUserInfo(userInfo) 
+  },
+  rejectUserInfo(reason?: any){
+    rejectUserInfo(reason)
+  },
+})
+
+
+//index.ts
+getUserInfo(e: any) {
+  //免于使用export
+  app.resolveUserInfo(e.detail.userInfo)
+  this.setData({
+    userInfo: e.detail.userInfo,
+    hasUserInfo: true
+  })
+}
+```
+
