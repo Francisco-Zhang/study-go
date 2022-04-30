@@ -269,8 +269,117 @@ getSetting().then(res => {
   if (this.userInfoReadyCallback) {
     this.userInfoReadyCallback(res)
   }
+})    
+```
 
-})
-      
+## 5、获取用户头像
+
+### 跳转页面后如何通知用户信息已经获取
+
+- 回调函数
+- EventEmitter
+- Promise
+
+微信的做法是设置回调函数
+
+```typescript
+//app.ts
+if (this.userInfoReadyCallback) {
+    this.userInfoReadyCallback(res)
+}
+
+//index page 
+onLoad() {
+  if(app.globalData.userInfo){
+   this.setData({
+      userInfo: app.globalData.userInfo,
+      hasUserInfo: true
+    })
+  }else{
+    //设置app.ts的回调函数，这种方式特别不稳定，if else 很难选择
+    //这种方式没法解决多页面问题，如果是多个页面，需要多个回调函数，app.ts里需要维护一个回调函数数组，
+    //如果有的page已经unload调了，那回调函数还要不要调用呢
+    app.userInfoReadyCallback = res => {  
+      this.setData({
+      userInfo: app.globalData.userInfo,
+      hasUserInfo: true
+    })
+    }
+  } 
+}
+```
+
+EventEmitter,是js一个标准，可以管理回调函数数组。在js中很好用，但是在ts中很难定义事件，类型很难定义。
+
+所以最为推荐 Promise 的形式。
+
+改造 app.globalData.userInfo,原来的代码：
+
+```typescript
+interface IAppOption {
+   globalData: {
+     userInfo?: WechatMiniprogram.UserInfo,
+   }
+   userInfoReadyCallback?: WechatMiniprogram.GetUserInfoSuccessCallback,
+ }
+```
+
+改造后
+
+```typescript
+interface IAppOption {
+  globalData: {
+    userInfo: Promise<WechatMiniprogram.UserInfo> ,
+  }
+}
+
+//index.ts，如果app.ts很快拿到userInfo，则直接执行then
+//否则，可以等待app.ts收到响应后执行then
+//可以很方便的在多个页面使用
+onLoad() {
+  app.globalData.userInfo.then(res => {
+     this.setData({
+      userInfo: res,
+      hasUserInfo: true
+    })
+  })
+}
+//语法上的小技巧
+app.globalData.userInfo.then(userInfo => {
+     this.setData({
+      userInfo,
+      hasUserInfo: true
+    })
+ })
+
+//app.ts 设置全局的 userInfo
+App<IAppOption>({
+  globalData: {
+      userInfo:new Promise((resolve,reject)=>{
+        getSetting().then(res => {
+        if (res.authSetting['scope.userInfo']) {
+            return getUserInfo()
+        }
+        return undefined //返回对象不是Promise类型，会直接传给下一个then
+      	}).then(res => {
+        if(!res){
+          return
+        }
+   			//通知
+        resolve(res)
+      	}).catch(reject) 
+      }),
+  },
+)
+```
+
+### 控制台查看 app
+
+在控制台通过 getApp() 函数可以获取全局的 app
+
+```typescript
+//调试的时候获取全局的 userInfo 查看 Promise 的状态
+getApp().globalData.userInfo
+//可以看到 状态是 resolved 或者 pending 等。
 ```
 
