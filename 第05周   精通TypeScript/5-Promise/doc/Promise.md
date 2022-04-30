@@ -527,3 +527,110 @@ getUserInfo(e: any) {
 }
 ```
 
+## 7、 async-await 语法糖
+
+### 语法糖改造
+
+```typescript
+function add(a:number,b:number): Promise<number>{
+  return new Promise((resolve,reject)=>{
+    if(b % 17 ===0 ){
+        reject(`bad number ${b}`)
+    }
+    setTimeout(() =>{
+    resolve(a+b)
+    },2000)
+  })
+}
+
+function mul(a:number,b:number): Promise<number>{
+  return new Promise((resolve,reject)=>{
+    setTimeout(() =>{
+    resolve(a*b)
+    },3000)
+  })
+} 
+
+//(2+3)*(4+5)
+async function calc(){
+  const a = await add(2,3) //异步等待，就相当于 then ,不会阻塞线程等待。只是一个语法糖
+  console.log('2+3',a)
+  const b = await add(4,5)
+  console.log('4+5',b)
+  const c = await mul(a,b)
+  return c  //在函数里边是number，但是函数的返回值是 Promise<number>，这就是 async 标识函数后的语法糖
+}
+
+calc().then(res => {
+  console.log('final result is ',res)
+})
+```
+
+### 简写
+
+```typescript
+async function calc(){
+  const a = await add(2,3) //异步等待，就相当于 then ,不会阻塞线程等待。只是一个语法糖
+  console.log('2+3',a)
+  const b = await add(4,5)
+  console.log('4+5',b)
+  return await mul(a,b)
+}
+
+calc().then(res => {
+  console.log('final result is ',res)
+})
+```
+
+### 异常处理
+
+```typescript
+async function calc(){
+  try{
+    const a = await add(2,17)
+    console.log('2+3',a)
+    const b = await add(4,5)
+    console.log('4+5',b)
+    return await mul(a,b)
+  }catch(err){
+    console.log('caught err ',err)
+    return undefined
+  }
+ 
+}
+
+calc().then(res => {
+  console.log('final result is ',res)
+})
+```
+
+### 同时处理
+
+```typescript
+//这样写也能同时进行加法运算，但是需要额外定义外部变量。
+add(2,3).then(res => {
+  console.log('final result is ',res)
+})
+
+add(4,5).then(res => {
+  console.log('final result is ',res)
+})
+
+//推荐的写法 Promise.all
+async function calc(){
+  try{
+    const [a,b] = await Promise.all([add(2,3),add(4,5)]) 
+    console.log('2+3',a)
+    console.log('4+5',b)
+    return await mul(a,b)
+  }catch(err){
+    console.log('caught err ',err)
+    return undefined
+  }
+}
+
+calc().then(res => {
+  console.log('final result is ',res)
+})
+```
+
