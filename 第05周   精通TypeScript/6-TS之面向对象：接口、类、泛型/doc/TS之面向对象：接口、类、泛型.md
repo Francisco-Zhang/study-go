@@ -525,4 +525,100 @@ const page = {
 }
 ```
 
-### 5、 泛型
+## 5、 泛型
+
+### 使用
+
+```typescript
+const a0:number[] = []
+const a:Array<number> = [] //这种<>的定义方式，就是泛型
+a.push(2) //只能push number
+
+const p = new Promise<string>((resolve,reject)=>{
+  resolve('abv') //只能是 string
+})
+```
+
+### 定义
+
+自己定义的场景比较少，一般都是去使用
+
+```typescript
+class MyArray<T>{
+  data:T [] = []
+  add(t:T){
+      this.data.push(t)
+  }
+  print(){
+    console.log(this.data)
+  }
+}
+
+const a = new MyArray<string>()
+a.add('a')
+a.print()
+
+const b = new MyArray<number>()
+b.add(2)
+b.print()
+```
+
+### 定义map的返回值类型
+
+```typescript
+class MyArray<T>{
+  data: T[] = []
+  add(t: T) {
+    this.data.push(t)
+  }
+
+  //(method) MyArray<number>.map<string>(f: (v: number) => string): string[]
+  map<U>(f: (v: T) => U): U[] {
+    return this.data.map(f)
+  }
+  print() {
+    console.log(this.data)
+  }
+}
+
+const a = new MyArray<number>()
+a.add(1)
+a.add(200)
+a.add(30000)
+
+console.log(a.map(v => v.toExponential()))
+
+//数组map的用法：   [1,2,3,4].map(v => 'abc')
+```
+
+### 使用 extends 接口，约束泛型类型
+
+```typescript
+interface HasWeight{
+  weight:number
+}
+
+//使用接口，约束泛型类型
+class MyArray<T extends HasWeight>{
+  data: T[] = []
+  add(t: T) {
+    this.data.push(t)
+  }
+  sortByWeight(){
+    this.data.sort((a,b) => a.weight - b.weight )
+  }
+}
+
+
+class WeightNumber{
+    constructor(public weight:number){}
+}
+
+const a = new MyArray<WeightNumber>()
+a.add(new WeightNumber(1))
+a.add(new WeightNumber(2000))
+a.add(new WeightNumber(300))
+a.sortByWeight()
+console.log(a)
+```
+
