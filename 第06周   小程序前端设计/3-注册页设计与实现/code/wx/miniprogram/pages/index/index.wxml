@@ -1,0 +1,21 @@
+<!--index.wxml-->
+<map class="map"
+  id="map"
+  latitude="{{location.latitude}}"
+  longitude="{{location.longitude}}"
+  scale="{{scale}}"
+  setting="{{setting}}"
+  enable-overlooking="{{isOverLooking}}"
+  enable-3D="{{is3D}}"
+  markers="{{markers}}" >
+  
+  <cover-view class="icon-container">
+    <!--  素材网站：https://material.io，外网素材加载不进来，我们也可以在内网搜索 material design  -->
+  <cover-image src="/resources/account.png">my porfile icon</cover-image>
+  <cover-image src="/resources/my_location.png" bindtap="onMyLocatioTap">my location icon</cover-image>
+  </cover-view>
+
+  <cover-view class="btn-container bg-grey round" bindtap="onScanClicked">
+    <cover-view >扫码开锁</cover-view>
+  </cover-view>
+  </map>
