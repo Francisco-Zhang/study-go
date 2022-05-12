@@ -11,8 +11,7 @@
   
   <cover-view class="icon-container">
     <!--  素材网站：https://material.io，外网素材加载不进来，我们也可以在内网搜索 material design  -->
-  <cover-image wx:if="{{!avatarURL}}" src="/resources/account.png">my porfile icon</cover-image>
-   <cover-image wx:if="{{avatarURL}}" class="round" src="{{avatarURL}}">my porfile icon</cover-image>
+  <cover-image class="round" src="{{avatarURL?avatarURL:'/resources/account.png'}}" bindtap="onMyTripsTap">my porfile icon</cover-image>
   <cover-image src="/resources/my_location.png" bindtap="onMyLocatioTap">my location icon</cover-image>
   </cover-view>
 
