@@ -1,4 +1,5 @@
-import { getUserProfile } from "../../utils/util"
+import { routing } from "../../utils/routing"
+import { getUserProfile } from "../../utils/wxapi"
 // 获取应用实例
 const app = getApp<IAppOption>()
 const shareLocationKey = "share_location"
@@ -15,7 +16,9 @@ Page({
     /**
      * 生命周期函数--监听页面加载
      */
-    async onLoad() {
+    async onLoad(opt:Record<'car_id',string>) {
+        const o:routing.LockOpts=opt
+        console.log('unlocking car',o.car_id)
         const userInfo = await app.globalData.userInfo
         this.setData({
             avatarURL: userInfo.avatarUrl,
@@ -97,13 +100,17 @@ Page({
                   //TODO 需要双向绑定
                   avatarURL:this.data.shareLocation ? this.data.avatarURL:'',
               })
+              const tripID = 'trip456'
               wx.showLoading({
                 title:'开锁中',
                 mask:true
             })
             setTimeout(() => {
                 wx.redirectTo({
-                    url:'/pages/driving/driving',
+                    //url:`/pages/driving/driving?trip_id=${tripID}`,
+                    url:routing.drving({
+                        trip_id:tripID
+                    }),
                     complete:()=>{
                         wx.hideLoading()
                     } 

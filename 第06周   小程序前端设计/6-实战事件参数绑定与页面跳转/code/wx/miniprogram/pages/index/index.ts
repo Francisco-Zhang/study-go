@@ -1,6 +1,8 @@
 
 // index.js
 
+import { routing } from "../../utils/routing"
+
 const initialLat = 23.099994
 const initialLng = 113.324520
 const app = getApp<IAppOption>()
@@ -129,11 +131,19 @@ Page({
   onHide() {
     this.isPageShowing = false
   },
-  onScanClicked(){
+  onScanTap(){
     wx.scanCode({
       success:()=>{
+        //TODO get carid from scan
+        const carID='car123'
+        const redirectURL = routing.lock({
+          car_id:carID
+        })
         wx.navigateTo({
-          url:'/pages/register/register'
+          //redirectURL 有特殊字符，需要转义
+          url:routing.register({
+            redirectURL:redirectURL
+          })
         })
       },
       fail:console.error,
@@ -141,7 +151,7 @@ Page({
   },
   onMyTripsTap(){
     wx.navigateTo({
-      url:'/pages/mytrips/mytrips'
+      url:routing.mytrips()
     })
   }
 

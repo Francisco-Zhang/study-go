@@ -1,4 +1,5 @@
 import { formatDuration, formatFee } from "../../utils/format"
+import { routing } from "../../utils/routing"
 
 const centPerSec = 0.7
 
@@ -46,7 +47,9 @@ Page({
     },
 
 
-    onLoad() {
+    onLoad(opt:Record<'trip_id',string>) {
+        const o:routing.DrivingOpts=opt
+        console.log('current trip',o.trip_id)
         this.setupLocationUpdator()
         this.setupTimer()
     },

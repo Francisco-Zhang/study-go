@@ -1,3 +1,5 @@
+import { routing } from "../../utils/routing"
+
 // pages/mytrips/mytrips.ts
 Page({
 
@@ -85,5 +87,26 @@ Page({
      */
     onShareAppMessage() {
 
+    },
+    onSwiperChange(e:any){
+        //caused by program,eg:通过程序修改 current 值引起的轮播图变更事件。
+        if(!e.detail.source){
+            return
+        }
+
+    },
+    //data-promotion-id 数据传参方式，微信里所有的元素都支持这种方法。
+    //currentTarget bindtap的元素
+    onPromotionItemTap(e:any){
+        console.log(e)
+        const promotionID=e.currentTarget.dataset.promotionId
+        if(promotionID){
+
+        }
+    },
+    onRegisterTap(){
+        wx.navigateTo({
+            url:routing.register()
+        })
     }
 })

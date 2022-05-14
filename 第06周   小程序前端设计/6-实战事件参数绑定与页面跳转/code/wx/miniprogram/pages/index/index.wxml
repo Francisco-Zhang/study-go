@@ -15,7 +15,7 @@
   <cover-image src="/resources/my_location.png" bindtap="onMyLocatioTap">my location icon</cover-image>
   </cover-view>
 
-  <cover-view class="btn-container bg-grey round" bindtap="onScanClicked">
+  <cover-view class="btn-container bg-grey round" bindtap="onScanTap">
     <cover-view >扫码开锁</cover-view>
   </cover-view>
   </map>
