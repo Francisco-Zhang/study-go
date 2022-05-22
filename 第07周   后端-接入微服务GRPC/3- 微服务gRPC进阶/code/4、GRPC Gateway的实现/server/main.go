@@ -1,45 +1,5 @@
-## 1、GRPC服务器及客户端
+package main
 
-proto带方法生成命令：protoc -I=. --go_out=plugins=grpc,paths=source_relative:gen/go trip.proto
-
-##  2、REST vs RPC
-
-![1](img/1.png)
-
-## 3、GRPC Gateway的作用
-
-## 4、GRPC Gateway的实现
-
-### 需要提前安装gateway包
-
-```shell
-go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
-```
-
-### proto目录新建 trip.yaml配置文件
-
-```yaml
-type: google.api.Service
-config_version: 3 
-
-http:
-  rules:
-  - selector: coolcar.TripService.GetTrip
-    get: /trip/{id}
-```
-
-### 通过脚本生成go代码
-
-新建 gen.sh文件
-
-```sh
-protoc -I=. --go_out=plugins=grpc,paths=source_relative:gen/go trip.proto;
-protoc -I=. --grpc-gateway_out=paths=source_relative,grpc_api_configuration=trip.yaml:gen/go trip.proto;
-```
-
-### 启动http服务，配置远程调用
-
-```go
 import (
 	"context"
 	trippb "coolcar/proto/gen/go"
@@ -84,6 +44,3 @@ func startGRPCGateway() {
 		log.Fatalf("cannot listen and serve: %v", err)
 	}
 }
-```
-
-通过浏览器 访问接口 http://localhost:8080/trip/123，就能看到gateway的返回值。
