@@ -1,0 +1,55 @@
+// MongoDB Playground
+// To disable this template go to Settings | MongoDB | Use Default Template For Playground.
+// Make sure you are connected to enable completions and to be able to run a playground.
+// Use Ctrl+Space inside a snippet or a string literal to trigger completions.
+
+
+// The drop() command destroys all data from a collection.
+// Make sure you run it against the correct database and collection.
+
+db.account.drop()
+
+db.account.insertMany([
+    {open_id:'123'},
+    {open_id:'456'},
+])
+
+
+db.account.createIndex({
+    open_id:1,
+},{
+    unique:true
+});
+
+function resolveOpenID_(open_id){
+  return db.account.updateOne({
+        open_id:open_id
+    },{
+        $set: {
+          open_id:open_id
+        }
+    },{
+        upsert:true
+    });
+}
+
+// 相比updateOne，功能相同，但是返回值不同。find 会返回查找到的记录
+// 通过建索引，实现唯一，不然无法保证
+function resolveOpenID(open_id){
+    return db.account.findAndModify({
+        query:{
+        open_id:open_id
+        },
+        update:{
+            $set: {
+                open_id:open_id
+            }
+        },
+        upsert:true,
+        new:true,  //返回更新后的数据
+    });
+}
+
+resolveOpenID('789')
+
+db.account.find()
