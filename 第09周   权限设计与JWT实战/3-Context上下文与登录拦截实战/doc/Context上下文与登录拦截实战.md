@@ -220,7 +220,7 @@ wx.login({
             }
           } as rental.v1.ICreateTripRequest,
           header:{
-            authorization:'Bearer'+loginResp.accessToken
+            authorization:'Bearer '+loginResp.accessToken
           }
         })
 
@@ -232,3 +232,83 @@ wx.login({
 ```
 
 ## 4、实现登陆状态拦截器
+
+### 拦截器实现
+
+```go
+package auth
+
+import (
+	"context"
+	"coolcar/shared/auth/token"
+	"fmt"
+	"io/ioutil"
+	"os"
+
+	"github.com/dgrijalva/jwt-go"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+func Interceptor(publicKeyFile string) (grpc.UnaryServerInterceptor, error) {
+	f, err := os.Open(publicKeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("cannnot open public key file: %v", err)
+	}
+
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read public key: %v", err)
+	}
+
+	pubKey, err := jwt.ParseRSAPublicKeyFromPEM(b)
+	if err != nil {
+		return nil, fmt.Errorf("canot parse public key: %v", err)
+	}
+	i := &interceptor{
+		verifier: &token.JWTTokenVerifier{
+			PublicKey: pubKey,
+		},
+	}
+	return i.HandleReq, nil
+}
+
+type tokenVerifier interface {
+	Verify(token string) (string, error)
+}
+
+//因为是公用的，所以要小心权限
+type interceptor struct {
+	verifier tokenVerifier
+}
+
+func (i *interceptor) HandleReq(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	tkn, err := tokenFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "")
+	}
+	return handler(ctx, req)
+}
+
+func tokenFromContext(c context.Context) (string, error) {
+
+	tkn := ""
+
+	return tkn, nil
+}
+```
+
+
+
+### main添加拦截器
+
+```go
+in, err := auth.Interceptor("shared/auth/public.key")
+if err != nil {
+  //输出完日志后，程序自动退出
+  logger.Fatal("cannot  create Interceptor:", zap.Error(err))
+}
+s := grpc.NewServer(grpc.UnaryInterceptor(in))
+```
+
