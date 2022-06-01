@@ -99,3 +99,49 @@ func main() {
 }
 ```
 
+## 2、应用Identifier Type设计模式
+
+这样设计可以防止出错，比如 tripId,userId都是string类型，互相赋值，编译器没法检查出来。
+
+```go
+package id
+
+// AccountID defines account id object.
+type AccountID string
+
+func (a AccountID) String() string {
+	return string(a)
+}
+
+
+func (i *interceptor) HandleReq(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	tkn, err := tokenFromContext(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "")
+	}
+	aid, err := i.verifier.Verify(tkn)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "token not valid: %v", err)
+	}
+
+	//其他领域也需要使用AccountID，所以方法大写
+	return handler(ContextWithAccountID(ctx, id.AccountID(aid)), req)
+}
+
+
+func ContextWithAccountID(c context.Context, aid id.AccountID) context.Context {
+	return context.WithValue(c, accountIDKey{}, aid)
+}
+
+
+func AccountIDFromContext(c context.Context) (id.AccountID, error) {
+	v := c.Value(accountIDKey{})
+	aid, ok := v.(id.AccountID)
+	if !ok {
+		return "", status.Error(codes.Unauthenticated, "")
+	}
+	return aid, nil
+}
+
+```
+
