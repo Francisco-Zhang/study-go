@@ -1255,3 +1255,19 @@ db.Create(&Language{
 	})
 ```
 
+## 18、FirstOrCreate
+
+```go
+// 未找到 user，根据条件和 Assign 属性创建记录
+db.Where(User{Name: "non_existing"}).Assign(User{Age: 20}).FirstOrCreate(&user)
+// SELECT * FROM users WHERE name = 'non_existing' ORDER BY id LIMIT 1;
+// INSERT INTO "users" (name, age) VALUES ("non_existing", 20);
+// user -> User{ID: 112, Name: "non_existing", Age: 20}
+
+// 找到了 `name` = `jinzhu` 的 user，依然会根据 Assign 更新记录
+db.Where(User{Name: "jinzhu"}).Assign(User{Age: 20}).FirstOrCreate(&user)
+// SELECT * FROM users WHERE name = 'jinzhu' ORDER BY id LIMIT 1;
+// UPDATE users SET age=20 WHERE id = 111;
+// user -> User{ID: 111, Name: "jinzhu", Age: 20}
+```
+
