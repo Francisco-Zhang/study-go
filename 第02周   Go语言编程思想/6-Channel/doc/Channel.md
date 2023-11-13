@@ -286,13 +286,40 @@ func (node *Node) TraverseWithChannel() chan *Node {
 
 
 
-## 4、 Select
+## 4、 Select 
+
+一、select简介
+
+        1、Go的select语句是一种仅能用于channl发送和接收消息的专用语句，此语句运行期间是阻塞的；当select中没有case语句的时候，会阻塞当前groutine。
+        
+        2、select是Golang在语言层面提供的I/O多路复用的机制，其专门用来检测多个channel是否准备完毕：可读或可写。
+    
+        3、select语句中除default外，每个case操作一个channel，要么读要么写
+    
+        4、select语句中除default外，各case执行顺序是随机的
+    
+        5、select语句中如果没有default语句，则会阻塞等待任一case
+    
+        6、select语句中读操作要判断是否成功读取，关闭的channel也可以读取
+
+
+
+
+Select：多个channel的复用
 
 非阻塞式的获取数据方法。
 
 底层是使用的IO多路复用技术，可以按顺序的检测channel是否有数据进入，哪个有数据，就执行哪个channel的数据读写操作。
 
 如果都没有数据，就会出现死锁错误，所以必须有default语句在检测不到数据的情况下执行。
+
+原理：
+
+select底层会转换成for循环顺序执行，如果判断出channel没有数据就会进行下一次循环，不会阻塞。
+
+![1](img/1.png)
+
+
 
 ```go
 func main() {
@@ -309,7 +336,7 @@ func main() {
 }
 ```
 
-想要一致监听，就在外面加一个for循环
+想要一直监听，就在外面加一个for循环
 
 ```go
 func generator() chan int {

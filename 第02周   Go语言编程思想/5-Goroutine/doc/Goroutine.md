@@ -44,7 +44,7 @@ func main() {
 }
 ```
 
-在Go旧版本中由于第一个协程无法退出，又不像第一个案例中有IO阻塞，所以没法交出控制权，导致主协程也没法继续执行，于是陷入了死循环。
+在Go旧版本中由于第一个协程无法退出，又不像第一个案例中有IO阻塞(fmt)，所以没法交出控制权，导致主协程也没法继续执行，于是陷入了死循环。
 
 [golang v1.14 Runtime](https://link.zhihu.com/?target=https%3A//golang.org/doc/go1.14)引入了goroutine异占抢占，避免了潜在的调度器死锁。
 
